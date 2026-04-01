@@ -1,16 +1,16 @@
--- [[ ROCKET ADMIN V67: STABLE PHANTOM ]] --
+-- [[ ROCKET ADMIN V68: THE PHANTOM RETURNS ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V67"
+local UI_NAME = "RocketAdmin_V68"
 local isLooping = false
 local isStackingActive = false
 local selectedTargets = {} 
 
--- 1. UI SETUP
+-- 1. UI SETUP (RESTORED)
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
 local sg = Instance.new("ScreenGui", pGui)
 sg.Name = UI_NAME
@@ -19,14 +19,14 @@ sg.ResetOnSpawn = false
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 220, 0, 380)
 main.Position = UDim2.new(0.5, -110, 0.5, -190)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 20)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "STABLE PHANTOM V67"
+title.Text = "PHANTOM WALK V68"
 title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -47,7 +47,7 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. VOID SHIELD
+-- 2. VOID PROTECTION
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -57,15 +57,16 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. THE STABLE BLINK LOOP
+-- 3. THE PHANTOM BLINK (No Spin Edition)
 task.spawn(function()
     local targetIndex = 1
     while true do
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
         local bp = player:FindFirstChild("Backpack")
         
-        if isLooping and root and char then
+        if isLooping and root and char and hum then
             local targets = {}
             for p, active in pairs(selectedTargets) do
                 if active and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
@@ -77,31 +78,28 @@ task.spawn(function()
                 targetIndex = (targetIndex % #targets) + 1
                 local currentT = targets[targetIndex]
                 
-                -- Save current walk position
-                local walkPos = root.CFrame
+                -- Anti-Spin: Lock rotation before blink
+                local oldCF = root.CFrame
+                hum.AutoRotate = false
                 
-                -- STOP SPINNING: Disable AutoRotate during the blink
-                local hum = char:FindFirstChild("Humanoid")
-                if hum then hum.AutoRotate = false end
-                
-                -- BLINK & FIRE
+                -- Blink and Fire
                 root.CFrame = currentT.CFrame
                 
                 local tool = char:FindFirstChild("RocketJumper") or (bp and bp:FindFirstChild("RocketJumper"))
                 if tool then
                     tool.Parent = char
-                    task.wait(0.02) -- Min time for server to see you at target
+                    task.wait(0.02)
                     tool:Activate()
                     task.wait(0.02)
                     if not isStackingActive and bp then tool.Parent = bp end
                 end
                 
-                -- RETURN & RESTORE
-                root.CFrame = walkPos
-                if hum then hum.AutoRotate = true end
+                -- Snap back and unlock
+                root.CFrame = oldCF
+                hum.AutoRotate = true
             end
         end
-        task.wait(0.03)
+        task.wait(0.04) -- Stable cycle speed
     end
 end)
 
@@ -118,7 +116,25 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 5. LIST LOGIC
+-- 5. UI BUTTONS & LIST
+local function createBtn(txt, y, getVal, setVal)
+    local b = Instance.new("TextButton", main)
+    b.Size = UDim2.new(0, 200, 0, 35)
+    b.Position = UDim2.new(0, 10, 0, y)
+    b.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    b.Text = txt
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.SourceSansBold
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(function() 
+        setVal(not getVal()) 
+        b.BackgroundColor3 = getVal() and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(30, 30, 35) 
+    end)
+end
+
+createBtn("PHANTOM LOOP", 180, function() return isLooping end, function(v) isLooping = v end)
+createBtn("INF STACK", 220, function() return isStackingActive end, function(v) isStackingActive = v end)
+
 function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
@@ -126,12 +142,12 @@ function updateList()
             local b = Instance.new("TextButton", scroll)
             b.Size = UDim2.new(1, -5, 0, 25)
             b.Text = p.Name
-            b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(40, 40, 40)
+            b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(40, 40, 40)
             b.TextColor3 = Color3.new(1,1,1)
             Instance.new("UICorner", b)
             b.MouseButton1Click:Connect(function()
                 selectedTargets[p] = not selectedTargets[p]
-                b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(40, 40, 40)
+                b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(40, 40, 40)
             end)
         end
     end
