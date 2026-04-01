@@ -1,14 +1,16 @@
--- [[ ROCKET SCRIP ]] --
+-- [[ ROCKET ADMIN V70: V63 BASE + GOD MODE ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V63"
+local UI_NAME = "RocketAdmin_V70"
 local isLooping = false
 local isStackingActive = false
+local isGodMode = false -- Added for God Mode
 local selectedTargets = {} 
+local swordName = "OverseerwrathSword" -- Added for God Mode
 
 -- 1. UI SETUP
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
@@ -17,8 +19,8 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 380)
-main.Position = UDim2.new(0.5, -110, 0.5, -190)
+main.Size = UDim2.new(0, 220, 0, 430) -- Height adjusted for extra button
+main.Position = UDim2.new(0.5, -110, 0.5, -215)
 main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 main.Active = true
 main.Draggable = true 
@@ -26,7 +28,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "PHASE STRIKE V63"
+title.Text = "PHASE STRIKE V70"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -39,10 +41,19 @@ xBtn.Text = "X"
 xBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 xBtn.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", xBtn)
+
 xBtn.MouseButton1Click:Connect(function() 
     sg:Destroy() 
     isLooping = false 
     isStackingActive = false 
+    isGodMode = false
+    -- Cleanup sword state on exit
+    local char = player.Character
+    if char then
+        for _, t in pairs(char:GetChildren()) do
+            if t.Name == swordName then t.Parent = player.Backpack end
+        end
+    end
     selectedTargets = {} 
 end)
 
@@ -61,7 +72,6 @@ RunService.Heartbeat:Connect(function()
     
     if root and hum then
         local pos = root.Position
-        -- Trigger if below -20 or being flung (Velocity > 950)
         if pos.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
             root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             root.CFrame = CFrame.new(pos.X, 150, pos.Z)
@@ -140,7 +150,6 @@ task.spawn(function()
                 tool:Activate()
                 task.wait(0.03) -- 30ms switch
                 
-                -- Put back in backpack only if InfStack is OFF
                 if not isStackingActive and bp then
                     tool.Parent = bp
                 end
@@ -150,7 +159,34 @@ task.spawn(function()
     end
 end)
 
--- 6. PRECISION CARROT
+-- 6. GOD MODE LOGIC (Merged)
+task.spawn(function()
+    while true do
+        if isGodMode then
+            local char = player.Character
+            local bp = player:FindFirstChild("Backpack")
+            if char and bp then
+                local swords = {}
+                for _, t in pairs(char:GetChildren()) do
+                    if t.Name == swordName then table.insert(swords, t) end
+                end
+                for _, t in pairs(bp:GetChildren()) do
+                    if t.Name == swordName and #swords < 10 then table.insert(swords, t) end
+                end
+
+                if #swords > 0 then
+                    for _, s in pairs(swords) do s.Parent = char end
+                    task.wait(0.02)
+                    for _, s in pairs(swords) do s.Parent = bp end
+                    task.wait(0.02)
+                end
+            end
+        end
+        task.wait(0.01)
+    end
+end)
+
+-- 7. PRECISION CARROT
 task.spawn(function()
     local lastStack = false
     while true do
@@ -175,7 +211,7 @@ task.spawn(function()
     end
 end)
 
--- 7. BUTTONS
+-- 8. BUTTONS
 local function createBtn(txt, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0, 200, 0, 35)
@@ -189,14 +225,28 @@ local function createBtn(txt, y, getVal, setVal)
         setVal(not getVal()) 
         b.BackgroundColor3 = getVal() and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(30, 30, 35) 
     end)
+    return b
 end
 
 createBtn("LOOP ATTACK", 180, function() return isLooping end, function(v) isLooping = v end)
 createBtn("INF STACK", 220, function() return isStackingActive end, function(v) isStackingActive = v end)
 
+local godBtn = createBtn("GOD MODE: OFF", 260, function() return isGodMode end, function(v) isGodMode = v end)
+godBtn.MouseButton1Click:Connect(function()
+    godBtn.Text = isGodMode and "GOD MODE: ON" or "GOD MODE: OFF"
+    if not isGodMode then
+        local char = player.Character
+        if char then
+            for _, t in pairs(char:GetChildren()) do
+                if t.Name == swordName then t.Parent = player.Backpack end
+            end
+        end
+    end
+end)
+
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0, 200, 0, 35)
-fixBtn.Position = UDim2.new(0, 10, 0, 260)
+fixBtn.Position = UDim2.new(0, 10, 0, 300)
 fixBtn.Text = "INSTANT FIX"
 fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 fixBtn.TextColor3 = Color3.new(1,1,1)
