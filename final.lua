@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V39: RENDER-STEPS & VOID V2 ]] --
+-- [[ ROCKET ADMIN V40: INSTANT BATCH FIX ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V39"
+local UI_NAME = "RocketAdmin_V40"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -29,8 +29,8 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V39"
-title.TextColor3 = Color3.fromRGB(255, 100, 0)
+title.Text = "ROCKET ADMIN V40"
+title.TextColor3 = Color3.fromRGB(255, 0, 100)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -49,20 +49,17 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. HIGH-SPEED VOID PROTECTION
+-- 2. VOID PROTECTION (IMPROVED)
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then
-        -- If you fall below -50 or are falling too fast downward
-        if root.Position.Y < -50 or root.AssemblyLinearVelocity.Y < -150 then
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            root.CFrame = CFrame.new(root.Position.X, 150, root.Position.Z)
-        end
+    if root and (root.Position.Y < -50 or root.AssemblyLinearVelocity.Y < -200) then
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
     end
 end)
 
--- 3. SYNCED ACTION LOOP
+-- 3. ACTION LOOPS
 task.spawn(function()
     while true do
         local char = player.Character
@@ -125,26 +122,36 @@ createBtn("LOOP: ON", "LOOP: OFF", 145, function() return isLooping end, functio
 createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 185, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
 createBtn("INF STACK: ON", "INF STACK: OFF", 225, function() return isStackingActive end, function(v) isStackingActive = v end)
 
--- FORCE DROP FIX
+-- INSTANT BATCH DROP FIX
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0.9, 0, 0, 35)
 fixBtn.Position = UDim2.new(0.05, 0, 0, 265)
 fixBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-fixBtn.Text = "FORCE DROP FIX"
+fixBtn.Text = "INSTANT FIX"
 fixBtn.TextColor3 = Color3.new(1,1,1)
 fixBtn.Font = Enum.Font.SourceSansBold
 Instance.new("UICorner", fixBtn)
+
 fixBtn.MouseButton1Click:Connect(function()
     local char = player.Character
+    local bp = player:FindFirstChild("Backpack")
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-    for _, t in pairs(char:GetChildren()) do
-        if t:IsA("Tool") and t.Name == "RocketJumper" then
-            t.Parent = workspace
-            task.wait(0.05)
-            t.Parent = char
-        end
-    end
+    
+    local jumpers = {}
+    -- Collect all jumpers from both places
+    for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
+    for _, t in pairs(bp:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
+    
+    -- Drop all at once
+    for _, t in pairs(jumpers) do t.Parent = workspace end
+    task.wait(0.1) -- Required for the server to recognize the drop
+    -- Pick all up at once
+    for _, t in pairs(jumpers) do t.Parent = char end
+    
+    fixBtn.Text = "FIXED!"
+    task.wait(0.5)
+    fixBtn.Text = "INSTANT FIX"
 end)
 
 local stopTP = Instance.new("TextButton", main)
@@ -156,7 +163,7 @@ stopTP.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", stopTP)
 stopTP.MouseButton1Click:Connect(function() targetLock = false if lockConnection then lockConnection:Disconnect() end end)
 
--- 6. RENDER-STEPPED TELEPORT (The "Sticky" TP)
+-- 6. TURBO TELEPORT
 local function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
@@ -170,15 +177,14 @@ local function updateList()
             b.MouseButton1Click:Connect(function()
                 targetLock = true
                 if lockConnection then lockConnection:Disconnect() end
-                -- Switch to RenderStepped for frame-perfect tracking
                 lockConnection = RunService.RenderStepped:Connect(function()
                     if not targetLock or not p.Character or not player.Character then return end
                     local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
                     local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
                     if myRoot and targetRoot then
-                        myRoot.Velocity = Vector3.new(0,0,0)
-                        -- Offsetting slightly above their head to avoid collision lag
-                        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3.5, 0)
+                        myRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                        -- Frame-perfect CFrame snap
+                        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3.2, 0)
                     end
                 end)
             end)
