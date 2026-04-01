@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V40: INSTANT BATCH FIX ]] --
+-- [[ ROCKET ADMIN V42: SERVER-SYNCED ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V40"
+local UI_NAME = "RocketAdmin_V42"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -22,15 +22,15 @@ sg.ResetOnSpawn = false
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 200, 0, 380)
 main.Position = UDim2.new(0.5, -100, 0.5, -190)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V40"
-title.TextColor3 = Color3.fromRGB(255, 0, 100)
+title.Text = "ROCKET ADMIN V42"
+title.TextColor3 = Color3.fromRGB(0, 255, 255)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -49,57 +49,52 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. VOID PROTECTION (IMPROVED)
+-- 2. VOID PROTECTION V3 (Physics-Based)
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root and (root.Position.Y < -50 or root.AssemblyLinearVelocity.Y < -200) then
-        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
+    local hum = char and char:FindFirstChild("Humanoid")
+    
+    if root and hum then
+        -- Trigger if too low OR if velocity is indicating a massive "fling"
+        if root.Position.Y < -35 or root.AssemblyLinearVelocity.Magnitude > 400 then
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
+            -- Brief invulnerability to state trips
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
     end
 end)
 
--- 3. ACTION LOOPS
+-- 3. AUTO-STACKER
 task.spawn(function()
     while true do
         local char = player.Character
         local bp = player:FindFirstChild("Backpack")
-        if char and bp then
-            if isStackingActive then
-                for _, item in ipairs(bp:GetChildren()) do
-                    if item.Name == "RocketJumper" then item.Parent = char end
-                end
-            end
-            if isLooping then
-                for _, item in ipairs(char:GetChildren()) do
-                    if item.Name == "RocketJumper" then item:Activate() end
-                end
+        if isStackingActive and char and bp then
+            for _, item in ipairs(bp:GetChildren()) do
+                if item.Name == "RocketJumper" then item.Parent = char end
             end
         end
-        task.wait(0.03)
+        task.wait(0.2) -- Slower to save performance
     end
 end)
 
--- 4. CARROT THREAD
+-- 4. GIVE ALL (Optimized)
 task.spawn(function()
+    local remotes = {"SpawnDiamondBlock", "SpawnGalaxyBlock", "SpawnLuckyBlock", "SpawnRainbowBlock", "SpawnSuperBlock"}
     while true do
-        if isStackingActive then
-            local bp = player:FindFirstChild("Backpack")
-            local char = player.Character
-            local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
-            if carrot and char then
-                carrot.Parent = char
-                task.wait(0.1)
-                carrot:Activate()
-                task.wait(0.1)
-                carrot.Parent = player:FindFirstChild("Backpack")
+        if isGiveAllActive then
+            for _, r in pairs(remotes) do
+                local rem = RS:FindFirstChild(r)
+                if rem then pcall(function() rem:FireServer() end) end
             end
         end
-        task.wait(31)
+        task.wait(0.7)
     end
 end)
 
--- 5. BUTTON BUILDER
+-- 5. BUTTONS
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 35)
@@ -113,7 +108,7 @@ local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local function update()
         local active = getVal()
         b.Text = active and txtOn or txtOff
-        b.BackgroundColor3 = active and Color3.fromRGB(120, 20, 20) or Color3.fromRGB(40, 40, 45)
+        b.BackgroundColor3 = active and Color3.fromRGB(0, 100, 150) or Color3.fromRGB(40, 40, 45)
     end
     b.MouseButton1Click:Connect(function() setVal(not getVal()) update() end)
 end
@@ -122,11 +117,11 @@ createBtn("LOOP: ON", "LOOP: OFF", 145, function() return isLooping end, functio
 createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 185, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
 createBtn("INF STACK: ON", "INF STACK: OFF", 225, function() return isStackingActive end, function(v) isStackingActive = v end)
 
--- INSTANT BATCH DROP FIX
+-- INSTANT FIX
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0.9, 0, 0, 35)
 fixBtn.Position = UDim2.new(0.05, 0, 0, 265)
-fixBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
+fixBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 fixBtn.Text = "INSTANT FIX"
 fixBtn.TextColor3 = Color3.new(1,1,1)
 fixBtn.Font = Enum.Font.SourceSansBold
@@ -134,36 +129,24 @@ Instance.new("UICorner", fixBtn)
 
 fixBtn.MouseButton1Click:Connect(function()
     local char = player.Character
-    local bp = player:FindFirstChild("Backpack")
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
     local jumpers = {}
-    -- Collect all jumpers from both places
     for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
-    for _, t in pairs(bp:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
-    
-    -- Drop all at once
+    for _, t in pairs(player.Backpack:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
     for _, t in pairs(jumpers) do t.Parent = workspace end
-    task.wait(0.1) -- Required for the server to recognize the drop
-    -- Pick all up at once
+    task.wait(0.1)
     for _, t in pairs(jumpers) do t.Parent = char end
-    
-    fixBtn.Text = "FIXED!"
-    task.wait(0.5)
-    fixBtn.Text = "INSTANT FIX"
 end)
 
 local stopTP = Instance.new("TextButton", main)
 stopTP.Size = UDim2.new(0.9, 0, 0, 35)
 stopTP.Position = UDim2.new(0.05, 0, 0, 310)
-stopTP.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+stopTP.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 stopTP.Text = "STOP TP LOCK"
 stopTP.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", stopTP)
 stopTP.MouseButton1Click:Connect(function() targetLock = false if lockConnection then lockConnection:Disconnect() end end)
 
--- 6. TURBO TELEPORT
+-- 6. SERVER-SYNCED TELEPORT
 local function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
@@ -177,14 +160,24 @@ local function updateList()
             b.MouseButton1Click:Connect(function()
                 targetLock = true
                 if lockConnection then lockConnection:Disconnect() end
-                lockConnection = RunService.RenderStepped:Connect(function()
+                
+                -- Heartbeat runs at server physics rate (60Hz)
+                lockConnection = RunService.Heartbeat:Connect(function()
                     if not targetLock or not p.Character or not player.Character then return end
                     local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
                     local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                    
                     if myRoot and targetRoot then
+                        -- Kill local momentum
                         myRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                        -- Frame-perfect CFrame snap
-                        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3.2, 0)
+                        -- Match server frame
+                        myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 3.5, 0)
+                        
+                        if isLooping then
+                            for _, tool in ipairs(player.Character:GetChildren()) do
+                                if tool.Name == "RocketJumper" then tool:Activate() end
+                            end
+                        end
                     end
                 end)
             end)
