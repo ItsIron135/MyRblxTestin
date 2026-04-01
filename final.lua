@@ -114,7 +114,7 @@ RunService.Heartbeat:Connect(function()
         
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
         -- Offset restored to 0.5
-        root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+        root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.6) * CFrame.Angles(math.rad(-90), 0, 0)
         
         if isLooping then
             for _, r in pairs(workspace:GetChildren()) do
