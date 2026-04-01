@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V50: HOT-SWAP MACHINE GUN ]] --
+-- [[ ROCKET ADMIN V51: TACTICAL SWITCHER ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V50"
+local UI_NAME = "RocketAdmin_V51"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -22,15 +22,15 @@ sg.ResetOnSpawn = false
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 200, 0, 390)
 main.Position = UDim2.new(0.5, -100, 0.5, -195)
-main.BackgroundColor3 = Color3.fromRGB(5, 5, 10)
+main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V50"
-title.TextColor3 = Color3.fromRGB(0, 255, 100)
+title.Text = "ROCKET ADMIN V51"
+title.TextColor3 = Color3.fromRGB(0, 200, 255)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -49,15 +49,14 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. UNIVERSAL SHIELD (Void Protection - Trigger at -20)
+-- 2. UNIVERSAL SHIELD (-20 Void Guard)
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
     if root and hum then
         local pos = root.Position
-        local vel = root.AssemblyLinearVelocity
-        if pos.Y < -20 or vel.Magnitude > 950 then
+        if pos.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
             root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             root.CFrame = CFrame.new(pos.X, 150, pos.Z)
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -65,14 +64,13 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. THE MACHINE GUN (Rapid Hot-Swap Logic)
+-- 3. THE TACTICAL LOOP (Equip 1 -> Fire -> 100ms -> Move to Backpack)
 task.spawn(function()
     while true do
         local char = player.Character
         local bp = player:FindFirstChild("Backpack")
         
         if isLooping and char and bp then
-            -- Find all rockets currently in the backpack (unfired/ready)
             local backpackJumpers = {}
             for _, t in pairs(bp:GetChildren()) do
                 if t.Name == "RocketJumper" then table.insert(backpackJumpers, t) end
@@ -82,32 +80,40 @@ task.spawn(function()
                 if not isLooping then break end
                 local tool = backpackJumpers[i]
                 
-                -- HOT-SWAP: Equip, Fire, and immediately move to next
+                -- Equip specific rocket
                 tool.Parent = char
+                task.wait(0.02) -- Tiny buffer for the game to recognize equip
                 tool:Activate()
                 
-                -- This tiny wait allows the equip/fire animation to trigger
-                -- without letting the global cooldown kick in.
-                task.wait(0.02) 
+                -- 100ms delay before switching to the next one
+                task.wait(0.1) 
+                
+                -- Move back to backpack so we don't multi-stack
+                if tool.Parent == char then
+                    tool.Parent = bp
+                end
             end
         end
         task.wait(0.01)
     end
 end)
 
--- 4. AUTO-STACKER (Independent)
+-- 4. CARROT THREAD (Return of the Carrot)
 task.spawn(function()
     while true do
-        if isStackingActive then
-            local bp = player:FindFirstChild("Backpack")
-            local char = player.Character
-            if bp and char then
-                for _, item in ipairs(bp:GetChildren()) do
-                    if item.Name == "RocketJumper" then item.Parent = char end
-                end
-            end
+        local bp = player:FindFirstChild("Backpack")
+        local char = player.Character
+        local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
+        
+        if carrot and char then
+            local oldParent = carrot.Parent
+            carrot.Parent = char
+            task.wait(0.1)
+            carrot:Activate()
+            task.wait(0.1)
+            carrot.Parent = oldParent
         end
-        task.wait(0.5)
+        task.wait(31) -- Every 31 seconds
     end
 end)
 
@@ -125,7 +131,7 @@ local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local function update()
         local active = getVal()
         b.Text = active and txtOn or txtOff
-        b.BackgroundColor3 = active and Color3.fromRGB(0, 200, 80) or Color3.fromRGB(40, 40, 45)
+        b.BackgroundColor3 = active and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(40, 40, 45)
     end
     b.MouseButton1Click:Connect(function() setVal(not getVal()) update() end)
 end
@@ -138,10 +144,9 @@ createBtn("INF STACK: ON", "INF STACK: OFF", 225, function() return isStackingAc
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0.9, 0, 0, 35)
 fixBtn.Position = UDim2.new(0.05, 0, 0, 265)
-fixBtn.BackgroundColor3 = Color3.fromRGB(0, 80, 150)
+fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 fixBtn.Text = "INSTANT FIX"
 fixBtn.TextColor3 = Color3.new(1,1,1)
-fixBtn.Font = Enum.Font.SourceSansBold
 Instance.new("UICorner", fixBtn)
 fixBtn.MouseButton1Click:Connect(function()
     local char = player.Character
