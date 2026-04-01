@@ -1,9 +1,9 @@
--- [[ ROCKET ADMIN V13: THE ULTIMATE HUB ]] --
+-- [[ ROCKET ADMIN V13: STABLE BUILD ]] --
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
--- 1. SETTINGS & TOGGLES
+-- 1. CONFIG & STATE
 local UI_NAME = "RocketAdmin_V13"
 local isLooping = false
 local homeCFrame = nil
@@ -38,35 +38,36 @@ local function createBtn(text, x, y, color)
     return b
 end
 
--- BUTTONS ROW 1 (Rocket Controls)
+-- BUTTONS
 local fixBtn = createBtn("MULTI-FIX", -150, -25, Color3.fromRGB(75, 0, 130))
 local loopBtn = createBtn("START LOOP", -50, -25, Color3.fromRGB(200, 0, 0))
 local homeBtn = createBtn("SET HOME", 50, -25, Color3.fromRGB(0, 150, 0))
 local tpBtn = createBtn("TP HOME", 150, -25, Color3.fromRGB(0, 100, 200))
-
--- BUTTONS ROW 2 (Player Hacks)
 local speedBtn = createBtn("SPEED (OFF)", -100, 25, Color3.fromRGB(50, 50, 50))
 local jumpBtn = createBtn("JUMP (OFF)", 0, 25, Color3.fromRGB(50, 50, 50))
-local exitBtn = createBtn("CLOSE UI", 100, 25, Color3.fromRGB(150, 0, 0))
+local exitBtn = createBtn("CLOSE", 100, 25, Color3.fromRGB(150, 0, 0))
 
--- 4. ROCKET LOGIC
+-- 4. ROCKET SEARCH
 local function getRockets()
     local list = {}
-    local locs = {player.Backpack, player.Character}
-    for _, l in pairs(locs) do
-        if l then
-            for _, i in pairs(l:GetChildren()) do
-                if i:IsA("Tool") and i.Name:lower():find("rocket") then table.insert(list, i) end
-            end
+    local backpack = player:FindFirstChild("Backpack")
+    local char = player.Character
+    local function scan(loc)
+        if not loc then return end
+        for _, i in pairs(loc:GetChildren()) do
+            if i:IsA("Tool") and i.Name:lower():find("rocket") then table.insert(list, i) end
         end
     end
+    scan(backpack)
+    scan(char)
     return list
 end
 
+-- 5. LOOP LOGIC
 loopBtn.MouseButton1Click:Connect(function()
     isLooping = not isLooping
     loopBtn.Text = isLooping and "STOP LOOP" or "START LOOP"
-    loopBtn.BackgroundColor3 = isLooping and Color3.fromRGB(100,0,0) or Color3.fromRGB(200,0,0)
+    loopBtn.BackgroundColor3 = isLooping and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(200, 0, 0)
     
     if isLooping then
         task.spawn(function()
@@ -76,10 +77,10 @@ loopBtn.MouseButton1Click:Connect(function()
                     for _, item in pairs(r) do
                         if not isLooping then break end
                         item.Parent = player.Character
-                        task.wait(0.01)
+                        task.wait(0.02)
                         item:Activate()
                         task.wait(0.06)
-                        item.Parent = player.Backpack
+                        item.Parent = player:FindFirstChild("Backpack")
                     end
                 end
                 task.wait(0.01)
@@ -88,7 +89,7 @@ loopBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 5. SPEED & JUMP HACKS
+-- 6. SPEED & JUMP HACKS
 speedBtn.MouseButton1Click:Connect(function()
     walkSpeedActive = not walkSpeedActive
     speedBtn.Text = walkSpeedActive and "SPEED (ON)" or "SPEED (OFF)"
@@ -101,10 +102,10 @@ jumpBtn.MouseButton1Click:Connect(function()
     jumpBtn.BackgroundColor3 = jumpPowerActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 50)
 end)
 
--- Constant Hack Loop
 task.spawn(function()
     while true do
-        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+        local char = player.Character
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
         if hum then
             if walkSpeedActive then hum.WalkSpeed = 100 else hum.WalkSpeed = 16 end
             if jumpPowerActive then hum.JumpPower = 150 hum.UseJumpPower = true else hum.JumpPower = 50 end
@@ -113,26 +114,25 @@ task.spawn(function()
     end
 end)
 
--- 6. WRAP UP
+-- 7. UTILS
 fixBtn.MouseButton1Click:Connect(function()
-    for _, r in pairs(getRockets()) do r.Parent = workspace end
+    local r = getRockets()
+    for _, item in pairs(r) do item.Parent = workspace end
     task.wait(0.3)
-    for _, r in pairs(getRockets()) do r.Parent = player.Character end
+    for _, item in pairs(r) do item.Parent = player.Character or player:FindFirstChild("Backpack") end
     notify("Fixed!", "Rockets Refreshed")
 end)
 
 homeBtn.MouseButton1Click:Connect(function()
-    if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        homeCFrame = player.Character.HumanoidRootPart.CFrame
-        notify("Saved!", "Home point set.")
-    end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if root then homeCFrame = root.CFrame notify("Saved!", "Home point set.") end
 end)
 
 tpBtn.MouseButton1Click:Connect(function()
-    if homeCFrame and player.Character then
-        player.Character.HumanoidRootPart.CFrame = homeCFrame
-    end
+    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if root and homeCFrame then root.CFrame = homeCFrame end
 end)
 
 exitBtn.MouseButton1Click:Connect(function() isLooping = false sg:Destroy() end)
-notify("V13 Loaded", "Welcome back, Boss.")
+
+notify("V13 Loaded", "Everything is ready.")
