@@ -157,4 +157,15 @@ local function updateList()
                     if myRoot and targetRoot then
                         myRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
                         -- Added LookAt to ensure rockets fire toward target
-                        myRoot.CFrame = CFrame.lookAt(targetRoot.Position +
+                        myRoot.CFrame = CFrame.lookAt(targetRoot.Position + Vector3.new(0, 3.5, 0), targetRoot.Position)
+                    end
+                end)
+            end)
+        end
+    end
+end
+
+xBtn.MouseButton1Click:Connect(function() sg:Destroy() isLooping = false isStackingActive = false targetLock = false end)
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
