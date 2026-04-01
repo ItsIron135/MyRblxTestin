@@ -1,11 +1,11 @@
--- [[ ROCKET ADMIN V62: THE LOGIC FIX ]] --
+-- [[ ROCKET ADMIN V63: THE RESTORATION ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V62"
+local UI_NAME = "RocketAdmin_V63"
 local isLooping = false
 local isStackingActive = false
 local selectedTargets = {} 
@@ -26,10 +26,25 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "PHASE STRIKE V62"
+title.Text = "PHASE STRIKE V63"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
+
+-- RESTORED: X EXIT BUTTON
+local xBtn = Instance.new("TextButton", main)
+xBtn.Size = UDim2.new(0, 25, 0, 25)
+xBtn.Position = UDim2.new(1, -30, 0, 5)
+xBtn.Text = "X"
+xBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+xBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", xBtn)
+xBtn.MouseButton1Click:Connect(function() 
+    sg:Destroy() 
+    isLooping = false 
+    isStackingActive = false 
+    selectedTargets = {} 
+end)
 
 local scroll = Instance.new("ScrollingFrame", main)
 scroll.Size = UDim2.new(0.9, 0, 0.35, 0)
@@ -38,7 +53,24 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. AGGRESSIVE STACKER (STRICT TOGGLE)
+-- 2. RESTORED: UNIVERSAL SHIELD (VOID PROTECTION)
+RunService.Heartbeat:Connect(function()
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChild("Humanoid")
+    
+    if root and hum then
+        local pos = root.Position
+        -- Trigger if below -20 or being flung (Velocity > 950)
+        if pos.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
+            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            root.CFrame = CFrame.new(pos.X, 150, pos.Z)
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+end)
+
+-- 3. AGGRESSIVE STACKER (STRICT TOGGLE)
 RunService.RenderStepped:Connect(function()
     if isStackingActive then
         local bp = player:FindFirstChild("Backpack")
@@ -53,18 +85,12 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 3. PHASE TELEPORT & SHIELD
+-- 4. PHASE TELEPORT & SILENT AIM
 local targetIndex = 1
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root then return end
-
-    -- Shield
-    if root.Position.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
-        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        root.CFrame = CFrame.new(root.Position.X, 150, root.Position.Z)
-    end
 
     local targets = {}
     for p, active in pairs(selectedTargets) do
@@ -80,7 +106,6 @@ RunService.Heartbeat:Connect(function()
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
         root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
         
-        -- Silent Aim
         if isLooping then
             for _, r in pairs(workspace:GetChildren()) do
                 if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
@@ -94,7 +119,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 4. 30MS TACTICAL CYCLE
+-- 5. 30MS TACTICAL CYCLE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -115,6 +140,7 @@ task.spawn(function()
                 tool:Activate()
                 task.wait(0.03) -- 30ms switch
                 
+                -- Put back in backpack only if InfStack is OFF
                 if not isStackingActive and bp then
                     tool.Parent = bp
                 end
@@ -124,7 +150,7 @@ task.spawn(function()
     end
 end)
 
--- 5. PRECISION CARROT
+-- 6. PRECISION CARROT
 task.spawn(function()
     local lastStack = false
     while true do
@@ -149,7 +175,7 @@ task.spawn(function()
     end
 end)
 
--- 6. BUTTONS
+-- 7. BUTTONS
 local function createBtn(txt, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0, 200, 0, 35)
@@ -177,10 +203,9 @@ fixBtn.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", fixBtn)
 fixBtn.MouseButton1Click:Connect(function()
     local char = player.Character
-    local bp = player:FindFirstChild("Backpack")
     local items = {}
     for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end
-    if bp then for _, t in pairs(bp:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end end
+    if player.Backpack then for _, t in pairs(player.Backpack:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end end
     for _, t in pairs(items) do t.Parent = workspace end
     task.wait(0.1)
     for _, t in pairs(items) do t.Parent = char end
