@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V37: GIVE ALL REVERT ]] --
+-- [[ ROCKET ADMIN V38: PHYSICAL DROP FIX ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V37"
+local UI_NAME = "RocketAdmin_V38"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -29,7 +29,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V37"
+title.Text = "ROCKET ADMIN V38"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -134,23 +134,44 @@ createBtn("LOOP: ON", "LOOP: OFF", 145, function() return isLooping end, functio
 createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 185, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
 createBtn("INF STACK: ON", "INF STACK: OFF", 225, function() return isStackingActive end, function(v) isStackingActive = v end)
 
--- FIX BUTTON
+-- THE FORCE DROP FIX BUTTON
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0.9, 0, 0, 35)
 fixBtn.Position = UDim2.new(0.05, 0, 0, 265)
 fixBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
-fixBtn.Text = "FIX ROCKETJUMPERS"
+fixBtn.Text = "FORCE DROP FIX"
 fixBtn.TextColor3 = Color3.new(1,1,1)
 fixBtn.Font = Enum.Font.SourceSansBold
 Instance.new("UICorner", fixBtn)
+
 fixBtn.MouseButton1Click:Connect(function()
-    local bp = player:FindFirstChild("Backpack")
     local char = player.Character
-    if bp and char then
-        for _, item in pairs(bp:GetChildren()) do
-            if item.Name == "RocketJumper" then item.Parent = char task.wait(0.01) item.Parent = bp end
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not char or not root then return end
+    
+    fixBtn.Text = "FIXING..."
+    fixBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+    
+    -- Fix tools in character AND backpack
+    local tools = {}
+    for _, t in pairs(char:GetChildren()) do if t:IsA("Tool") and t.Name == "RocketJumper" then table.insert(tools, t) end end
+    for _, t in pairs(player.Backpack:GetChildren()) do if t:IsA("Tool") and t.Name == "RocketJumper" then table.insert(tools, t) end end
+    
+    for _, tool in pairs(tools) do
+        local handle = tool:FindFirstChild("Handle")
+        if handle then
+            handle.CFrame = root.CFrame * CFrame.new(0, -2, 0)
         end
+        tool.Parent = workspace
+        task.wait(0.05)
+        tool.Parent = char
     end
+    
+    fixBtn.Text = "FIXED!"
+    fixBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+    task.wait(0.5)
+    fixBtn.Text = "FORCE DROP FIX"
+    fixBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 200)
 end)
 
 local stopTP = Instance.new("TextButton", main)
