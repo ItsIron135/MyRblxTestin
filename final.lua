@@ -81,4 +81,129 @@ RunService.Heartbeat:Connect(function()
         root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
         
         -- Silent Aim
-        if is
+        if isLooping then
+            for _, r in pairs(workspace:GetChildren()) do
+                if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
+                    if (r.Position - root.Position).Magnitude < 15 then
+                        r.CFrame = CFrame.lookAt(r.Position, currentT.Position)
+                        r.AssemblyLinearVelocity = (currentT.Position - r.Position).Unit * 300
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- 4. 30MS TACTICAL CYCLE
+task.spawn(function()
+    while true do
+        local char = player.Character
+        local bp = player:FindFirstChild("Backpack")
+        
+        if isLooping and char then
+            local source = isStackingActive and char or (bp or char)
+            local jumpers = {}
+            for _, t in pairs(source:GetChildren()) do
+                if t.Name == "RocketJumper" then table.insert(jumpers, t) end
+            end
+            
+            for i = 1, #jumpers do
+                if not isLooping then break end
+                local tool = jumpers[i]
+                
+                if tool.Parent ~= char then tool.Parent = char end
+                tool:Activate()
+                task.wait(0.03) -- 30ms switch
+                
+                if not isStackingActive and bp then
+                    tool.Parent = bp
+                end
+            end
+        end
+        task.wait(0.01)
+    end
+end)
+
+-- 5. PRECISION CARROT
+task.spawn(function()
+    local lastStack = false
+    while true do
+        if isStackingActive then
+            if not lastStack then lastStack = true task.wait(3) end
+            local bp = player:FindFirstChild("Backpack")
+            local char = player.Character
+            local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
+            if carrot and char then
+                local oldP = carrot.Parent
+                carrot.Parent = char
+                task.wait(0.1)
+                carrot:Activate()
+                task.wait(0.1)
+                carrot.Parent = oldP
+            end
+            task.wait(30)
+        else
+            lastStack = false
+            task.wait(0.5)
+        end
+    end
+end)
+
+-- 6. BUTTONS
+local function createBtn(txt, y, getVal, setVal)
+    local b = Instance.new("TextButton", main)
+    b.Size = UDim2.new(0, 200, 0, 35)
+    b.Position = UDim2.new(0, 10, 0, y)
+    b.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    b.Text = txt
+    b.TextColor3 = Color3.new(1,1,1)
+    b.Font = Enum.Font.SourceSansBold
+    Instance.new("UICorner", b)
+    b.MouseButton1Click:Connect(function() 
+        setVal(not getVal()) 
+        b.BackgroundColor3 = getVal() and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(30, 30, 35) 
+    end)
+end
+
+createBtn("LOOP ATTACK", 180, function() return isLooping end, function(v) isLooping = v end)
+createBtn("INF STACK", 220, function() return isStackingActive end, function(v) isStackingActive = v end)
+
+local fixBtn = Instance.new("TextButton", main)
+fixBtn.Size = UDim2.new(0, 200, 0, 35)
+fixBtn.Position = UDim2.new(0, 10, 0, 260)
+fixBtn.Text = "INSTANT FIX"
+fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+fixBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", fixBtn)
+fixBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local bp = player:FindFirstChild("Backpack")
+    local items = {}
+    for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end
+    if bp then for _, t in pairs(bp:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end end
+    for _, t in pairs(items) do t.Parent = workspace end
+    task.wait(0.1)
+    for _, t in pairs(items) do t.Parent = char end
+end)
+
+function updateList()
+    for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player then
+            local b = Instance.new("TextButton", scroll)
+            b.Size = UDim2.new(1, -5, 0, 25)
+            b.Text = p.Name
+            b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 80, 150) or Color3.fromRGB(40, 40, 40)
+            b.TextColor3 = Color3.new(1,1,1)
+            Instance.new("UICorner", b)
+            b.MouseButton1Click:Connect(function()
+                selectedTargets[p] = not selectedTargets[p]
+                b.BackgroundColor3 = selectedTargets[p] and Color3.fromRGB(0, 80, 150) or Color3.fromRGB(40, 40, 40)
+            end)
+        end
+    end
+end
+
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
