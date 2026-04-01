@@ -56,11 +56,9 @@ task.spawn(function()
         local bp = player:FindFirstChild("Backpack")
         
         if isStackingActive and char and bp then
-            -- We process them one by one to prevent inventory lag
             for _, item in ipairs(bp:GetChildren()) do
                 if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
                     item.Parent = char
-                    -- Smallest possible wait to allow the engine to "register" the tool
                     RunService.Heartbeat:Wait() 
                 end
             end
@@ -97,7 +95,7 @@ task.spawn(function()
     end
 end)
 
--- 4. GIVE ALL (Optimized Speed)
+-- 4. GIVE ALL
 task.spawn(function()
     local blocks = {"SpawnDiamondBlock", "SpawnGalaxyBlock", "SpawnLuckyBlock", "SpawnRainbowBlock", "SpawnSuperBlock"}
     while true do
@@ -107,7 +105,7 @@ task.spawn(function()
                 if remote then pcall(function() remote:FireServer() end) end
             end
         end
-        task.wait(0.6) -- Slightly slower to give the stacker room to breathe
+        task.wait(0.6)
     end
 end)
 
@@ -178,3 +176,9 @@ local function updateList()
             end)
         end
     end
+end
+
+xBtn.MouseButton1Click:Connect(function() sg:Destroy() isLooping = false isStackingActive = false targetLock = false end)
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
