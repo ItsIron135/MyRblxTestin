@@ -57,19 +57,19 @@ task.spawn(function()
         
         if isStackingActive and char and bp then
             for _, item in ipairs(bp:GetChildren()) do
-                -- Check for common naming variations
-                if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
+                -- Hard-locked to RocketJumper
+                if item:IsA("Tool") and item.Name == "RocketJumper" then
                     pcall(function()
                         item.Parent = char
                     end)
-                    RunService.Heartbeat:Wait() -- The "One-by-One" fix
+                    RunService.Heartbeat:Wait()
                 end
             end
         end
         
         if isLooping and char then
             for _, item in ipairs(char:GetChildren()) do
-                if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
+                if item:IsA("Tool") and item.Name == "RocketJumper" then
                     item:Activate()
                 end
             end
