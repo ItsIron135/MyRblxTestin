@@ -1,11 +1,11 @@
--- [[ ROCKET ADMIN V58: OVERHEAD TACTICAL ]] --
+-- [[ ROCKET V57 ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V58"
+local UI_NAME = "RocketAdmin_V57"
 local isLooping = false
 local targetLock = false
 local isStackingActive = false
@@ -21,15 +21,15 @@ sg.ResetOnSpawn = false
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 200, 0, 350)
 main.Position = UDim2.new(0.5, -100, 0.5, -175)
-main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+main.BackgroundColor3 = Color3.fromRGB(15, 5, 5)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V58"
-title.TextColor3 = Color3.fromRGB(0, 200, 255)
+title.Text = "ROCKET ADMIN V57"
+title.TextColor3 = Color3.fromRGB(255, 0, 0)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -48,28 +48,30 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. UNIVERSAL SHIELD & SILENT AIM
+-- 2. UNIVERSAL SHIELD & AUTO-AIM HOOK
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     
+    -- Shield Logic
     if root then
-        -- Void/Fling Guard
         if root.Position.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
             root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             root.CFrame = CFrame.new(root.Position.X, 150, root.Position.Z)
         end
-        
-        -- SILENT AIM (Redirects nearby rockets to Target)
-        if isLooping and currentTarget and currentTarget.Character then
-            local tRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
-            if tRoot then
-                for _, obj in ipairs(workspace:GetChildren()) do
-                    if obj:IsA("BasePart") and (obj.Name == "Rocket" or obj.Name == "Projectile") then
-                        if (obj.Position - root.Position).Magnitude < 15 then
-                            obj.CFrame = CFrame.lookAt(obj.Position, tRoot.Position)
-                            obj.AssemblyLinearVelocity = (tRoot.Position - obj.Position).Unit * 180
-                        end
+    end
+
+    -- SILENT AIM: Force spawned rockets to fly at target
+    if isLooping and currentTarget and currentTarget.Character then
+        local tRoot = currentTarget.Character:FindFirstChild("HumanoidRootPart")
+        if tRoot then
+            for _, rocket in pairs(workspace:GetChildren()) do
+                -- Check if it's a rocket part (usually named 'Rocket' or 'Projectile')
+                if rocket:IsA("BasePart") and (rocket.Name == "Rocket" or rocket.Name == "Projectile") then
+                    -- If the rocket is near us, redirect it to the target
+                    if (rocket.Position - root.Position).Magnitude < 10 then
+                        rocket.CFrame = CFrame.lookAt(rocket.Position, tRoot.Position)
+                        rocket.AssemblyLinearVelocity = (tRoot.Position - rocket.Position).Unit * 150
                     end
                 end
             end
@@ -91,9 +93,9 @@ task.spawn(function()
                 if not isLooping then break end
                 local tool = backpackJumpers[i]
                 tool.Parent = char
-                task.wait(0.01)
+                task.wait(0.01) -- Minimum equip time
                 tool:Activate()
-                task.wait(0.03) -- 30ms switch
+                task.wait(0.03) -- 30ms delay
                 if not isStackingActive and tool.Parent == char then
                     tool.Parent = bp
                 end
@@ -103,27 +105,38 @@ task.spawn(function()
     end
 end)
 
--- 4. INF STACK & PRECISION CARROT
+-- 4. FAST MULTI-STACK
 task.spawn(function()
-    local lastStackState = false
     while true do
         if isStackingActive then
-            if not lastStackState then lastStackState = true task.wait(3) end
             local bp = player:FindFirstChild("Backpack")
             local char = player.Character
             if bp and char then
                 for _, item in ipairs(bp:GetChildren()) do
                     if item.Name == "RocketJumper" then item.Parent = char end
                 end
-                local carrot = bp:FindFirstChild("Carrot") or char:FindFirstChild("Carrot")
-                if carrot then
-                    local oldP = carrot.Parent
-                    carrot.Parent = char
-                    task.wait(0.1)
-                    carrot:Activate()
-                    task.wait(0.1)
-                    carrot.Parent = oldP
-                end
+            end
+        end
+        task.wait(0.3)
+    end
+end)
+
+-- 5. PRECISION CARROT
+task.spawn(function()
+    local lastStackState = false
+    while true do
+        if isStackingActive then
+            if lastStackState == false then lastStackState = true task.wait(3) end
+            local bp = player:FindFirstChild("Backpack")
+            local char = player.Character
+            local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
+            if carrot and char then
+                local oldP = carrot.Parent
+                carrot.Parent = char
+                task.wait(0.1)
+                carrot:Activate()
+                task.wait(0.1)
+                carrot.Parent = oldP
             end
             task.wait(30)
         else
@@ -133,7 +146,7 @@ task.spawn(function()
     end
 end)
 
--- 5. BUTTONS
+-- 6. BUTTONS
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 40)
@@ -147,7 +160,7 @@ local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local function update()
         local active = getVal()
         b.Text = active and txtOn or txtOff
-        b.BackgroundColor3 = active and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(40, 40, 45)
+        b.BackgroundColor3 = active and Color3.fromRGB(180, 0, 0) or Color3.fromRGB(40, 40, 45)
     end
     b.MouseButton1Click:Connect(function() setVal(not getVal()) update() end)
 end
@@ -181,7 +194,7 @@ stopTP.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", stopTP)
 stopTP.MouseButton1Click:Connect(function() targetLock = false currentTarget = nil if lockConnection then lockConnection:Disconnect() end end)
 
--- 6. TARGET SYSTEM
+-- 7. TARGET SYSTEM
 local function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
@@ -202,8 +215,8 @@ local function updateList()
                     local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
                     if myRoot and targetRoot then
                         myRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                        -- Positioned back overhead (3.8 studs)
-                        myRoot.CFrame = CFrame.lookAt(targetRoot.Position + Vector3.new(0, 3.8, 0), targetRoot.Position)
+                        -- TP inside them (0.5 stud offset) looking down
+                        myRoot.CFrame = CFrame.lookAt(targetRoot.Position + Vector3.new(0, 0.5, 0), targetRoot.Position)
                     end
                 end)
             end)
