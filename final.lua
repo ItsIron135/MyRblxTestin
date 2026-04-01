@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V47: THE UNIVERSAL SHIELD ]] --
+-- [[ ROCKET ADMIN V48: THE FIXED SHIELD ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V47"
+local UI_NAME = "RocketAdmin_V48"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -20,8 +20,8 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 200, 0, 380)
-main.Position = UDim2.new(0.5, -100, 0.5, -190)
+main.Size = UDim2.new(0, 200, 0, 390)
+main.Position = UDim2.new(0.5, -100, 0.5, -195)
 main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 main.Active = true
 main.Draggable = true 
@@ -29,7 +29,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V47"
+title.Text = "ROCKET ADMIN V48"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -58,18 +58,8 @@ RunService.Heartbeat:Connect(function()
     if root and hum then
         local pos = root.Position
         local vel = root.AssemblyLinearVelocity
-        local shouldReset = false
-        
-        -- Height check (Void is -30, we trigger at -20)
-        if pos.Y < -20 then shouldReset = true end
-        
-        -- Velocity check (Catching flings/death zones)
-        if vel.Magnitude > 850 then shouldReset = true end
-
-        if shouldReset then
-            -- LOG COORDINATES TO CONSOLE (F9)
-            print(string.format("[SHIELD ACTIVE] Saved at X: %.1f Y: %.1f Z: %.1f", pos.X, pos.Y, pos.Z))
-            
+        if pos.Y < -20 or vel.Magnitude > 850 then
+            print(string.format("[SHIELD] Saved at X: %.1f Y: %.1f Z: %.1f", pos.X, pos.Y, pos.Z))
             root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             root.CFrame = CFrame.new(pos.X, 150, pos.Z)
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
@@ -77,7 +67,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. CONTINUOUS ACTION LOOP (1-by-1 Firing)
+-- 3. CONTINUOUS ACTION LOOP
 task.spawn(function()
     while true do
         local char = player.Character
@@ -88,14 +78,11 @@ task.spawn(function()
                     if item.Name == "RocketJumper" then item.Parent = char end
                 end
             end
-            
             if isLooping then
-                local tools = char:GetChildren()
-                for i = 1, #tools do
-                    local t = tools[i]
+                for _, t in ipairs(char:GetChildren()) do
                     if t:IsA("Tool") and t.Name == "RocketJumper" then
                         t:Activate()
-                        task.wait(0.01) -- High-speed 1-by-1 usage
+                        task.wait(0.01)
                     end
                 end
             end
@@ -104,7 +91,7 @@ task.spawn(function()
     end
 end)
 
--- 4. BUTTON BUILDER
+-- 4. BUTTONS
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 35)
@@ -127,9 +114,29 @@ createBtn("LOOP: ON", "LOOP: OFF", 145, function() return isLooping end, functio
 createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 185, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
 createBtn("INF STACK: ON", "INF STACK: OFF", 225, function() return isStackingActive end, function(v) isStackingActive = v end)
 
+-- MANUAL INSTANT FIX (Force Drop-to-Workspace)
+local fixBtn = Instance.new("TextButton", main)
+fixBtn.Size = UDim2.new(0.9, 0, 0, 35)
+fixBtn.Position = UDim2.new(0.05, 0, 0, 265)
+fixBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
+fixBtn.Text = "INSTANT FIX"
+fixBtn.TextColor3 = Color3.new(1,1,1)
+fixBtn.Font = Enum.Font.SourceSansBold
+Instance.new("UICorner", fixBtn)
+
+fixBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local jumpers = {}
+    for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
+    for _, t in pairs(player.Backpack:GetChildren()) do if t.Name == "RocketJumper" then table.insert(jumpers, t) end end
+    for _, t in pairs(jumpers) do t.Parent = workspace end
+    task.wait(0.1)
+    for _, t in pairs(jumpers) do t.Parent = char end
+end)
+
 local stopTP = Instance.new("TextButton", main)
 stopTP.Size = UDim2.new(0.9, 0, 0, 35)
-stopTP.Position = UDim2.new(0.05, 0, 0, 280)
+stopTP.Position = UDim2.new(0.05, 0, 0, 310)
 stopTP.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 stopTP.Text = "STOP TP"
 stopTP.TextColor3 = Color3.new(1,1,1)
@@ -156,7 +163,6 @@ local function updateList()
                     local targetRoot = p.Character:FindFirstChild("HumanoidRootPart")
                     if myRoot and targetRoot then
                         myRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
-                        -- Added LookAt to ensure rockets fire toward target
                         myRoot.CFrame = CFrame.lookAt(targetRoot.Position + Vector3.new(0, 3.5, 0), targetRoot.Position)
                     end
                 end)
