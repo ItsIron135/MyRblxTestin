@@ -1,12 +1,12 @@
--- [[ ROCKET ADMIN V28: SYNC & STABILITY ]] --
+-- [[ ROCKET ADMIN V29: RESPONSIVE EDITION ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
--- CONFIG & FLAGS
-local UI_NAME = "RocketAdmin_V28"
+-- FLAGS
+local UI_NAME = "RocketAdmin_V29"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -22,15 +22,14 @@ sg.ResetOnSpawn = false
 local main = Instance.new("Frame", sg)
 main.Size = UDim2.new(0, 200, 0, 320)
 main.Position = UDim2.new(0.5, -100, 0.5, -160)
-main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-main.BorderSizePixel = 0
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Text = "ROCKET ADMIN V28"
+title.Size = UDim2.new(1, 0, 0, 35)
+title.Text = "ROCKET ADMIN V29"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -39,7 +38,7 @@ local xBtn = Instance.new("TextButton", main)
 xBtn.Size = UDim2.new(0, 25, 0, 25)
 xBtn.Position = UDim2.new(1, -30, 0, 5)
 xBtn.Text = "X"
-xBtn.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
+xBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 xBtn.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", xBtn)
 
@@ -50,91 +49,72 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. STABILITY UTILS
-local function getJumpers()
-    local found = {}
-    local locations = {player.Backpack, player.Character}
-    for _, loc in pairs(locations) do
-        if loc then
-            for _, tool in pairs(loc:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name == "Rocket Jumper" then
-                    table.insert(found, tool)
+-- 2. STACKING & FIRING (High Priority)
+task.spawn(function()
+    while true do
+        local char = player.Character
+        local bp = player:FindFirstChild("Backpack")
+        
+        if char and bp then
+            -- MULTI-EQUIP LOGIC
+            if isStackingActive then
+                for _, item in ipairs(bp:GetChildren()) do
+                    if item.Name == "Rocket Jumper" then
+                        item.Parent = char
+                    end
                 end
             end
-        end
-    end
-    return found
-end
-
--- Void Protection
-task.spawn(function()
-    while true do
-        local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-        if root and root.Position.Y < -70 then
-            root.Velocity = Vector3.new(0,0,0)
-            root.CFrame = CFrame.new(root.Position.X, 100, root.Position.Z)
-        end
-        task.wait(0.2)
-    end
-end)
-
--- 3. THE COMBINED ACTION LOOP (Stack + Fire)
-task.spawn(function()
-    while true do
-        if isLooping or isStackingActive then
-            local char = player.Character
-            local backpack = player:FindFirstChild("Backpack")
-            local jumpers = getJumpers()
             
-            if char and #jumpers > 0 then
-                for _, jumper in pairs(jumpers) do
-                    -- Force to character if stacking is on
-                    if isStackingActive and jumper.Parent ~= char then
-                        jumper.Parent = char
-                    end
-                    -- Fire if looping is on
-                    if isLooping and jumper.Parent == char then
-                        jumper:Activate()
+            -- FIRING LOGIC
+            if isLooping then
+                for _, item in ipairs(char:GetChildren()) do
+                    if item:IsA("Tool") and item.Name == "Rocket Jumper" then
+                        item:Activate()
                     end
                 end
             end
         end
-        task.wait(0.05)
+        task.wait(0.03) -- Faster refresh for stacking
     end
 end)
 
--- 4. CARROT & GIVE ALL
+-- 3. GIVE ALL (Lower Priority to prevent lag)
+task.spawn(function()
+    local blocks = {"SpawnDiamondBlock", "SpawnGalaxyBlock", "SpawnLuckyBlock", "SpawnRainbowBlock", "SpawnSuperBlock"}
+    while true do
+        if isGiveAllActive then
+            for _, b in pairs(blocks) do
+                local remote = RS:FindFirstChild(b)
+                if remote then pcall(function() remote:FireServer() end) end
+            end
+            task.wait(0.8) -- Slowed down to prevent "Sluggish" feeling
+        else
+            task.wait(1)
+        end
+    end
+end)
+
+-- 4. CARROT BUFF
 task.spawn(function()
     while true do
         if isStackingActive then
-            local carrot = player.Backpack:FindFirstChild("Carrot") or player.Character:FindFirstChild("Carrot")
-            if carrot and player.Character then
-                carrot.Parent = player.Character
+            local bp = player:FindFirstChild("Backpack")
+            local char = player.Character
+            local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
+            if carrot and char then
+                carrot.Parent = char
                 task.wait(0.1)
                 carrot:Activate()
                 task.wait(0.1)
-                carrot.Parent = player.Backpack
+                carrot.Parent = player:FindFirstChild("Backpack")
             end
         end
-        task.wait(30)
+        task.wait(31)
     end
 end)
 
-task.spawn(function()
-    local remotes = {"SpawnDiamondBlock", "SpawnGalaxyBlock", "SpawnLuckyBlock", "SpawnRainbowBlock", "SpawnSuperBlock"}
-    while true do
-        if isGiveAllActive then
-            for _, name in pairs(remotes) do
-                local r = RS:FindFirstChild(name)
-                if r then pcall(function() r:FireServer() end) end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
--- 5. BUTTONS & LIST
-local function createBtn(txtOn, txtOff, y, flag)
+-- 5. BUTTON BUILDER (Fixed Colors)
+local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 30)
     b.Position = UDim2.new(0.05, 0, 0, y)
@@ -144,27 +124,23 @@ local function createBtn(txtOn, txtOff, y, flag)
     b.Font = Enum.Font.SourceSansBold
     Instance.new("UICorner", b)
     
+    local function updateVisuals()
+        local active = getVal()
+        b.Text = active and txtOn or txtOff
+        b.BackgroundColor3 = active and Color3.fromRGB(80, 20, 20) or Color3.fromRGB(40, 40, 45)
+    end
+
     b.MouseButton1Click:Connect(function()
-        if flag == 1 then isLooping = not isLooping b.Text = isLooping and txtOn or txtOff
-        elseif flag == 2 then isGiveAllActive = not isGiveAllActive b.Text = isGiveAllActive and txtOn or txtOff
-        elseif flag == 3 then isStackingActive = not isStackingActive b.Text = isStackingActive and txtOn or txtOff end
-        b.BackgroundColor3 = (isLooping or isGiveAllActive or isStackingActive) and Color3.fromRGB(60, 0, 0) or Color3.fromRGB(40, 40, 45)
+        setVal(not getVal())
+        updateVisuals()
     end)
 end
 
-createBtn("LOOP: ON", "LOOP: OFF", 160, 1)
-createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 195, 2)
-createBtn("INF STACK: ON", "INF STACK: OFF", 230, 3)
+createBtn("LOOP: ON", "LOOP: OFF", 160, function() return isLooping end, function(v) isLooping = v end)
+createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 195, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
+createBtn("INF STACK: ON", "INF STACK: OFF", 230, function() return isStackingActive end, function(v) isStackingActive = v end)
 
-local releaseB = Instance.new("TextButton", main)
-releaseB.Size = UDim2.new(0.9, 0, 0, 30)
-releaseB.Position = UDim2.new(0.05, 0, 0, 265)
-releaseB.Text = "RELEASE LOCK"
-releaseB.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-releaseB.TextColor3 = Color3.new(1,1,1)
-Instance.new("UICorner", releaseB)
-releaseB.MouseButton1Click:Connect(function() targetLock = false end)
-
+-- 6. PLAYER LIST
 local function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
@@ -192,7 +168,7 @@ local function updateList()
     end
 end
 
-xBtn.MouseButton1Click:Connect(function() sg:Destroy() isLooping = false isStackingActive = false end)
+xBtn.MouseButton1Click:Connect(function() sg:Destroy() isLooping = false isStackingActive = false targetLock = false end)
 Players.PlayerAdded:Connect(updateList)
 Players.PlayerRemoving:Connect(updateList)
 updateList()
