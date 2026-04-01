@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V32: AUTO-FIX EDITION ]] --
+-- [[ ROCKET ADMIN V33: THE DEFINITIVE JUMPER FIX ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V32"
+local UI_NAME = "RocketAdmin_V33"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -29,7 +29,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V32"
+title.Text = "ROCKET ADMIN V33"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -49,7 +49,7 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. THE IMPROVED AUTO-STACKER (One-by-One Fix)
+-- 2. THE DEDICATED JUMPER FIXER
 task.spawn(function()
     while true do
         local char = player.Character
@@ -57,9 +57,12 @@ task.spawn(function()
         
         if isStackingActive and char and bp then
             for _, item in ipairs(bp:GetChildren()) do
+                -- Check for common naming variations
                 if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
-                    item.Parent = char
-                    RunService.Heartbeat:Wait() 
+                    pcall(function()
+                        item.Parent = char
+                    end)
+                    RunService.Heartbeat:Wait() -- The "One-by-One" fix
                 end
             end
         end
@@ -71,7 +74,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.05)
+        task.wait(0.03)
     end
 end)
 
@@ -82,7 +85,6 @@ task.spawn(function()
             local bp = player:FindFirstChild("Backpack")
             local char = player.Character
             local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
-            
             if carrot and char then
                 carrot.Parent = char
                 task.wait(0.1)
@@ -109,7 +111,7 @@ task.spawn(function()
     end
 end)
 
--- 5. BUTTONS
+-- 5. BUTTON BUILDER
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 35)
