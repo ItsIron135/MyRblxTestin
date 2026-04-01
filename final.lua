@@ -1,11 +1,11 @@
--- [[ ROCKET V55 ]] --
+-- [[ ROCKET ADMIN V56: INF STACK FIXED ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V55"
+local UI_NAME = "RocketAdmin_V56"
 local isLooping = false
 local targetLock = false
 local isStackingActive = false
@@ -27,8 +27,8 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V55"
-title.TextColor3 = Color3.fromRGB(255, 100, 0)
+title.Text = "ROCKET ADMIN V56"
+title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -47,7 +47,7 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. VOID SHIELD
+-- 2. UNIVERSAL SHIELD
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -62,7 +62,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. THE FIRING LOOP (60ms Switch)
+-- 3. THE FIRING LOOP (60ms Tactical Switch)
 task.spawn(function()
     while true do
         local char = player.Character
@@ -78,7 +78,7 @@ task.spawn(function()
                 tool.Parent = char
                 task.wait(0.02)
                 tool:Activate()
-                task.wait(0.06) -- 60ms delay
+                task.wait(0.06) 
                 if not isStackingActive and tool.Parent == char then
                     tool.Parent = bp
                 end
@@ -88,37 +88,47 @@ task.spawn(function()
     end
 end)
 
--- 4. INF STACK & CARROT
+-- 4. FAST MULTI-STACK LOOP (FIXED)
+task.spawn(function()
+    while true do
+        if isStackingActive then
+            local bp = player:FindFirstChild("Backpack")
+            local char = player.Character
+            if bp and char then
+                for _, item in ipairs(bp:GetChildren()) do
+                    if item.Name == "RocketJumper" then 
+                        item.Parent = char 
+                    end
+                end
+            end
+        end
+        task.wait(0.3) -- Runs fast enough to keep rockets equipped
+    end
+end)
+
+-- 5. PRECISION CARROT LOOP
 task.spawn(function()
     local lastStackState = false
     while true do
         if isStackingActive then
-            -- If we JUST turned it on, wait 3s before first carrot
             if lastStackState == false then
                 lastStackState = true
-                task.wait(3) 
+                task.wait(3) -- First wait: 3s
             end
             
             local bp = player:FindFirstChild("Backpack")
             local char = player.Character
-            if bp and char then
-                -- Auto Stack
-                for _, item in ipairs(bp:GetChildren()) do
-                    if item.Name == "RocketJumper" then item.Parent = char end
-                end
-                
-                -- Carrot Logic
-                local carrot = (bp:FindFirstChild("Carrot")) or (char:FindFirstChild("Carrot"))
-                if carrot then
-                    local oldP = carrot.Parent
-                    carrot.Parent = char
-                    task.wait(0.1)
-                    carrot:Activate()
-                    task.wait(0.1)
-                    carrot.Parent = oldP
-                end
+            local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
+            
+            if carrot and char then
+                local oldP = carrot.Parent
+                carrot.Parent = char
+                task.wait(0.1)
+                carrot:Activate()
+                task.wait(0.1)
+                carrot.Parent = oldP
             end
-            task.wait(30) -- The 30s Loop
+            task.wait(30) -- Repeating loop: 30s
         else
             lastStackState = false
             task.wait(0.5)
@@ -126,7 +136,7 @@ task.spawn(function()
     end
 end)
 
--- 5. BUTTONS
+-- 6. BUTTONS
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0.9, 0, 0, 40)
@@ -140,7 +150,7 @@ local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local function update()
         local active = getVal()
         b.Text = active and txtOn or txtOff
-        b.BackgroundColor3 = active and Color3.fromRGB(255, 100, 0) or Color3.fromRGB(40, 40, 45)
+        b.BackgroundColor3 = active and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(40, 40, 45)
     end
     b.MouseButton1Click:Connect(function() setVal(not getVal()) update() end)
 end
@@ -174,7 +184,7 @@ stopTP.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", stopTP)
 stopTP.MouseButton1Click:Connect(function() targetLock = false if lockConnection then lockConnection:Disconnect() end end)
 
--- 6. TARGET SYSTEM
+-- 7. TARGET SYSTEM
 local function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
     for _, p in pairs(Players:GetPlayers()) do
