@@ -64,7 +64,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. THE FIRING LOOP (100ms Switch, No Multi-Stack unless InfStack is ON)
+-- 3. THE FIRING LOOP (130ms Switch, No Multi-Stack unless InfStack is ON)
 task.spawn(function()
     while true do
         local char = player.Character
@@ -83,7 +83,7 @@ task.spawn(function()
                 tool.Parent = char
                 task.wait(0.02)
                 tool:Activate()
-                task.wait(0.1) -- 100ms switch
+                task.wait(0.13) -- 130ms switch
                 
                 -- Put it back ONLY if Inf Stack is OFF
                 if not isStackingActive and tool.Parent == char then
