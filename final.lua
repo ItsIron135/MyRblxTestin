@@ -1,16 +1,16 @@
--- [[ ROCKET ADMIN V70: V63 BASE + GOD MODE ]] --
+-- [[ ROCKET ADMIN V72: THE TRUE V63 HYBRID ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V70"
+local UI_NAME = "RocketAdmin_V72"
 local isLooping = false
 local isStackingActive = false
-local isGodMode = false -- Added for God Mode
+local isGodMode = false 
 local selectedTargets = {} 
-local swordName = "OverseerwrathSword" -- Added for God Mode
+local swordName = "OverseerwrathSword"
 
 -- 1. UI SETUP
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
@@ -19,7 +19,7 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 430) -- Height adjusted for extra button
+main.Size = UDim2.new(0, 220, 0, 430)
 main.Position = UDim2.new(0.5, -110, 0.5, -215)
 main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 main.Active = true
@@ -28,7 +28,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "PHASE STRIKE V70"
+title.Text = "PHASE STRIKE V72"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -47,7 +47,6 @@ xBtn.MouseButton1Click:Connect(function()
     isLooping = false 
     isStackingActive = false 
     isGodMode = false
-    -- Cleanup sword state on exit
     local char = player.Character
     if char then
         for _, t in pairs(char:GetChildren()) do
@@ -95,7 +94,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. PHASE TELEPORT & SILENT AIM
+-- 4. PHASE TELEPORT & SILENT AIM (WITH 0.5 OFFSET)
 local targetIndex = 1
 RunService.Heartbeat:Connect(function()
     local char = player.Character
@@ -114,6 +113,7 @@ RunService.Heartbeat:Connect(function()
         local currentT = targets[targetIndex]
         
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+        -- Offset restored to 0.5
         root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
         
         if isLooping then
@@ -148,7 +148,7 @@ task.spawn(function()
                 
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
-                task.wait(0.03) -- 30ms switch
+                task.wait(0.03) 
                 
                 if not isStackingActive and bp then
                     tool.Parent = bp
@@ -159,19 +159,22 @@ task.spawn(function()
     end
 end)
 
--- 6. GOD MODE LOGIC (Merged)
+-- 6. GOD MODE STACKER (INTEGRATED)
 task.spawn(function()
     while true do
         if isGodMode then
             local char = player.Character
             local bp = player:FindFirstChild("Backpack")
+            
             if char and bp then
                 local swords = {}
                 for _, t in pairs(char:GetChildren()) do
                     if t.Name == swordName then table.insert(swords, t) end
                 end
                 for _, t in pairs(bp:GetChildren()) do
-                    if t.Name == swordName and #swords < 10 then table.insert(swords, t) end
+                    if t.Name == swordName and #swords < 10 then
+                        table.insert(swords, t)
+                    end
                 end
 
                 if #swords > 0 then
