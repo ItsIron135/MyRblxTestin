@@ -1,34 +1,25 @@
--- [[ ROCKET ADMIN V13: STABLE BUILD ]] --
+-- [[ ROCKET ADMIN V16: PURE GLUE & LOOP ]] --
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
--- 1. CONFIG & STATE
-local UI_NAME = "RocketAdmin_V13"
+-- CONFIG
+local UI_NAME = "RocketAdmin_V16"
 local isLooping = false
-local homeCFrame = nil
-local walkSpeedActive = false
-local jumpPowerActive = false
+local targetLock = false
+local lockConnection = nil
 
--- 2. NOTIFY FUNCTION
-local function notify(title, text)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title;
-        Text = text;
-        Duration = 3;
-    })
-end
-
--- 3. UI SETUP
+-- 1. UI SETUP
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
 local sg = Instance.new("ScreenGui", pGui)
 sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
-local function createBtn(text, x, y, color)
+local function createBtn(text, x, color)
     local b = Instance.new("TextButton", sg)
-    b.Size = UDim2.new(0, 90, 0, 40)
-    b.Position = UDim2.new(0.5, x, 0.5, y)
+    b.Size = UDim2.new(0, 110, 0, 45)
+    b.Position = UDim2.new(0.5, x, 0.5, -22)
     b.BackgroundColor3 = color
     b.Text = text
     b.TextColor3 = Color3.new(1,1,1)
@@ -38,101 +29,104 @@ local function createBtn(text, x, y, color)
     return b
 end
 
--- BUTTONS
-local fixBtn = createBtn("MULTI-FIX", -150, -25, Color3.fromRGB(75, 0, 130))
-local loopBtn = createBtn("START LOOP", -50, -25, Color3.fromRGB(200, 0, 0))
-local homeBtn = createBtn("SET HOME", 50, -25, Color3.fromRGB(0, 150, 0))
-local tpBtn = createBtn("TP HOME", 150, -25, Color3.fromRGB(0, 100, 200))
-local speedBtn = createBtn("SPEED (OFF)", -100, 25, Color3.fromRGB(50, 50, 50))
-local jumpBtn = createBtn("JUMP (OFF)", 0, 25, Color3.fromRGB(50, 50, 50))
-local exitBtn = createBtn("CLOSE", 100, 25, Color3.fromRGB(150, 0, 0))
+local loopBtn = createBtn("ROCKET LOOP: OFF", -170, Color3.fromRGB(200, 0, 0))
+local lockBtn = createBtn("TARGET LOCK: OFF", -55, Color3.fromRGB(50, 50, 50))
+local exitBtn = createBtn("CLOSE UI", 60, Color3.fromRGB(150, 0, 0))
 
--- 4. ROCKET SEARCH
+-- 2. GEAR FINDER
 local function getRockets()
     local list = {}
-    local backpack = player:FindFirstChild("Backpack")
-    local char = player.Character
-    local function scan(loc)
-        if not loc then return end
-        for _, i in pairs(loc:GetChildren()) do
-            if i:IsA("Tool") and i.Name:lower():find("rocket") then table.insert(list, i) end
+    local locations = {player.Backpack, player.Character}
+    for _, loc in pairs(locations) do
+        if loc then
+            for _, i in pairs(loc:GetChildren()) do
+                if i:IsA("Tool") and i.Name:lower():find("rocket") then 
+                    table.insert(list, i) 
+                end
+            end
         end
     end
-    scan(backpack)
-    scan(char)
     return list
 end
 
--- 5. LOOP LOGIC
-loopBtn.MouseButton1Click:Connect(function()
-    isLooping = not isLooping
-    loopBtn.Text = isLooping and "STOP LOOP" or "START LOOP"
-    loopBtn.BackgroundColor3 = isLooping and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(200, 0, 0)
-    
-    if isLooping then
-        task.spawn(function()
-            while isLooping do
-                local r = getRockets()
-                if #r > 0 and player.Character then
-                    for _, item in pairs(r) do
-                        if not isLooping then break end
-                        item.Parent = player.Character
-                        task.wait(0.02)
-                        item:Activate()
-                        task.wait(0.06)
-                        item.Parent = player:FindFirstChild("Backpack")
-                    end
-                end
-                task.wait(0.01)
-            end
-        end)
-    end
-end)
-
--- 6. SPEED & JUMP HACKS
-speedBtn.MouseButton1Click:Connect(function()
-    walkSpeedActive = not walkSpeedActive
-    speedBtn.Text = walkSpeedActive and "SPEED (ON)" or "SPEED (OFF)"
-    speedBtn.BackgroundColor3 = walkSpeedActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 50)
-end)
-
-jumpBtn.MouseButton1Click:Connect(function()
-    jumpPowerActive = not jumpPowerActive
-    jumpBtn.Text = jumpPowerActive and "JUMP (ON)" or "JUMP (OFF)"
-    jumpBtn.BackgroundColor3 = jumpPowerActive and Color3.fromRGB(0, 200, 100) or Color3.fromRGB(50, 50, 50)
-end)
-
+-- 3. PERMANENT ROCKET THREAD
 task.spawn(function()
     while true do
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        if hum then
-            if walkSpeedActive then hum.WalkSpeed = 100 else hum.WalkSpeed = 16 end
-            if jumpPowerActive then hum.JumpPower = 150 hum.UseJumpPower = true else hum.JumpPower = 50 end
+        if isLooping then
+            local rockets = getRockets()
+            local char = player.Character
+            if char and #rockets > 0 then
+                for _, r in pairs(rockets) do
+                    if not isLooping then break end
+                    r.Parent = char
+                    task.wait(0.01)
+                    r:Activate()
+                    task.wait(0.05)
+                    r.Parent = player:FindFirstChild("Backpack")
+                end
+            end
         end
-        task.wait(0.1)
+        task.wait(0.01)
     end
 end)
 
--- 7. UTILS
-fixBtn.MouseButton1Click:Connect(function()
-    local r = getRockets()
-    for _, item in pairs(r) do item.Parent = workspace end
-    task.wait(0.3)
-    for _, item in pairs(r) do item.Parent = player.Character or player:FindFirstChild("Backpack") end
-    notify("Fixed!", "Rockets Refreshed")
+-- 4. GLUE LOGIC
+local function stopLock()
+    targetLock = false
+    lockBtn.Text = "TARGET LOCK: OFF"
+    lockBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    if lockConnection then lockConnection:Disconnect() lockConnection = nil end
+end
+
+local function startLock(targetP)
+    if lockConnection then lockConnection:Disconnect() end
+    targetLock = true
+    lockBtn.Text = "LOCKED: " .. targetP.Name:sub(1,8)
+    lockBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
+    
+    lockConnection = RunService.Heartbeat:Connect(function()
+        if not targetLock then return end
+        if player.Character and targetP.Character then
+            local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            local tHead = targetP.Character:FindFirstChild("Head")
+            if myRoot and tHead then
+                myRoot.CFrame = tHead.CFrame * CFrame.new(0, 3, 0)
+            end
+        end
+    end)
+end
+
+-- 5. INTERACTION
+loopBtn.MouseButton1Click:Connect(function()
+    isLooping = not isLooping
+    loopBtn.Text = isLooping and "ROCKET LOOP: ON" or "ROCKET LOOP: OFF"
+    loopBtn.BackgroundColor3 = isLooping and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
-homeBtn.MouseButton1Click:Connect(function()
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if root then homeCFrame = root.CFrame notify("Saved!", "Home point set.") end
+lockBtn.MouseButton1Click:Connect(function()
+    if targetLock then stopLock() else
+        print("Use ;rocket [name] to lock someone!")
+    end
 end)
 
-tpBtn.MouseButton1Click:Connect(function()
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if root and homeCFrame then root.CFrame = homeCFrame end
+player.Chatted:Connect(function(msg)
+    local args = msg:split(" ")
+    if args[1]:lower() == ";rocket" and args[2] then
+        local tName = args[2]:lower()
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= player and p.Name:lower():sub(1, #tName) == tName then
+                isLooping = true
+                loopBtn.Text = "ROCKET LOOP: ON"
+                loopBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
+                startLock(p)
+                break
+            end
+        end
+    end
 end)
 
-exitBtn.MouseButton1Click:Connect(function() isLooping = false sg:Destroy() end)
-
-notify("V13 Loaded", "Everything is ready.")
+exitBtn.MouseButton1Click:Connect(function()
+    isLooping = false
+    stopLock()
+    sg:Destroy()
+end)
