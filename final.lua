@@ -114,7 +114,7 @@ RunService.Heartbeat:Connect(function()
         
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
         -- Offset restored to 0.5
-        root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
+        root.CFrame = currentT.CFrame * CFrame.new(0, 0, -1) * CFrame.Angles(math.rad(-90), 0, 0)
         
         if isLooping then
             for _, r in pairs(workspace:GetChildren()) do
@@ -189,7 +189,7 @@ task.spawn(function()
     end
 end)
 
--- 7. PRECISION CARROT
+-- 7. CARROT
 task.spawn(function()
     local lastStack = false
     while true do
