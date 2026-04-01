@@ -1,11 +1,11 @@
--- [[ ROCKET ADMIN V73: SPAWN LOCKDOWN ]] --
+-- [[ ROCKET ADMIN V74: LOCKDOWN + GEAR FIX ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V73"
+local UI_NAME = "RocketAdmin_V74"
 local isLooping = false
 local isStackingActive = false
 local isGodMode = false 
@@ -28,8 +28,8 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "SPAWN LOCK V73"
-title.TextColor3 = Color3.fromRGB(255, 50, 50) -- Aggressive Red
+title.Text = "SPAWN LOCK V74"
+title.TextColor3 = Color3.fromRGB(255, 50, 50)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
@@ -56,12 +56,11 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. INSTANT SPAWN LISTENER (The "Lockdown" Logic)
+-- 2. INSTANT SPAWN LISTENER
 local function instantFire(targetRoot)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if isLooping and root and targetRoot then
-        -- Snap and Fire immediately before loop even hits
         root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
     end
@@ -89,7 +88,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. COMBAT LOOP (V63 BASE + HIGH VELOCITY AIM)
+-- 4. COMBAT LOOP
 local targetIndex = 1
 RunService.Heartbeat:Connect(function()
     local char = player.Character
@@ -114,7 +113,6 @@ RunService.Heartbeat:Connect(function()
             for _, r in pairs(workspace:GetChildren()) do
                 if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
                     if (r.Position - root.Position).Magnitude < 15 then
-                        -- PROJECTILE BUFF: Increased velocity to 600 to beat spawn shields
                         r.CFrame = CFrame.lookAt(r.Position, currentT.Position)
                         r.AssemblyLinearVelocity = (currentT.Position - r.Position).Unit * 600 
                     end
@@ -131,7 +129,6 @@ task.spawn(function()
         local bp = player:FindFirstChild("Backpack")
         if not char or not bp then task.wait(0.1) continue end
 
-        -- God Mode
         if isGodMode then
             local swords = {}
             for _, t in pairs(char:GetChildren()) do if t.Name == swordName then table.insert(swords, t) end end
@@ -144,7 +141,6 @@ task.spawn(function()
             end
         end
         
-        -- Rocket Cycle
         if isLooping then
             local jumpers = {}
             local source = isStackingActive and char or bp
@@ -182,6 +178,25 @@ createBtn("LOCKDOWN LOOP", 180, function() return isLooping end, function(v) isL
 createBtn("INF STACK", 220, function() return isStackingActive end, function(v) isStackingActive = v end)
 local godBtn = createBtn("GOD MODE: OFF", 260, function() return isGodMode end, function(v) isGodMode = v end)
 godBtn.MouseButton1Click:Connect(function() godBtn.Text = isGodMode and "GOD MODE: ON" or "GOD MODE: OFF" end)
+
+-- RESTORED: INSTANT FIX BUTTON
+local fixBtn = Instance.new("TextButton", main)
+fixBtn.Size = UDim2.new(0, 200, 0, 35)
+fixBtn.Position = UDim2.new(0, 10, 0, 300)
+fixBtn.Text = "INSTANT FIX"
+fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+fixBtn.TextColor3 = Color3.new(1,1,1)
+fixBtn.Font = Enum.Font.SourceSansBold
+Instance.new("UICorner", fixBtn)
+fixBtn.MouseButton1Click:Connect(function()
+    local char = player.Character
+    local items = {}
+    for _, t in pairs(char:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end
+    if player.Backpack then for _, t in pairs(player.Backpack:GetChildren()) do if t.Name == "RocketJumper" then table.insert(items, t) end end end
+    for _, t in pairs(items) do t.Parent = workspace end
+    task.wait(0.1)
+    for _, t in pairs(items) do t.Parent = char end
+end)
 
 function updateList()
     for _, c in pairs(scroll:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
