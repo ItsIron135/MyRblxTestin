@@ -1,89 +1,68 @@
--- [[ ROCKET ADMIN V16: PURE GLUE & LOOP ]] --
+-- [[ ROCKET ADMIN V19: SCROLLING PLAYER LIST ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- CONFIG
-local UI_NAME = "RocketAdmin_V16"
+local UI_NAME = "RocketAdmin_V19"
 local isLooping = false
 local targetLock = false
 local lockConnection = nil
 
--- 1. UI SETUP
+-- 1. UI CONSTRUCTION
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
 local sg = Instance.new("ScreenGui", pGui)
 sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
-local function createBtn(text, x, color)
-    local b = Instance.new("TextButton", sg)
-    b.Size = UDim2.new(0, 110, 0, 45)
-    b.Position = UDim2.new(0.5, x, 0.5, -22)
-    b.BackgroundColor3 = color
-    b.Text = text
-    b.TextColor3 = Color3.new(1,1,1)
-    b.Font = Enum.Font.SourceSansBold
-    b.TextSize = 11
-    Instance.new("UICorner", b)
-    return b
-end
+-- Main Frame
+local main = Instance.new("Frame", sg)
+main.Size = UDim2.new(0, 200, 0, 300)
+main.Position = UDim2.new(0.5, -100, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+main.BorderSizePixel = 0
+Instance.new("UICorner", main)
 
-local loopBtn = createBtn("ROCKET LOOP: OFF", -170, Color3.fromRGB(200, 0, 0))
-local lockBtn = createBtn("TARGET LOCK: OFF", -55, Color3.fromRGB(50, 50, 50))
-local exitBtn = createBtn("CLOSE UI", 60, Color3.fromRGB(150, 0, 0))
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "ROCKET ADMIN V19"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.SourceSansBold
 
--- 2. GEAR FINDER
+-- Scrolling List
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(0.9, 0, 0.6, 0)
+scroll.Position = UDim2.new(0.05, 0, 0.15, 0)
+scroll.BackgroundTransparency = 1
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 4
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0, 5)
+
+-- 2. GEAR & LOCK LOGIC
 local function getRockets()
     local list = {}
-    local locations = {player.Backpack, player.Character}
-    for _, loc in pairs(locations) do
-        if loc then
-            for _, i in pairs(loc:GetChildren()) do
-                if i:IsA("Tool") and i.Name:lower():find("rocket") then 
-                    table.insert(list, i) 
-                end
+    local locs = {player.Backpack, player.Character}
+    for _, l in pairs(locs) do
+        if l then
+            for _, i in pairs(l:GetChildren()) do
+                if i:IsA("Tool") and i.Name:lower():find("rocket") then table.insert(list, i) end
             end
         end
     end
     return list
 end
 
--- 3. PERMANENT ROCKET THREAD
-task.spawn(function()
-    while true do
-        if isLooping then
-            local rockets = getRockets()
-            local char = player.Character
-            if char and #rockets > 0 then
-                for _, r in pairs(rockets) do
-                    if not isLooping then break end
-                    r.Parent = char
-                    task.wait(0.01)
-                    r:Activate()
-                    task.wait(0.05)
-                    r.Parent = player:FindFirstChild("Backpack")
-                end
-            end
-        end
-        task.wait(0.01)
-    end
-end)
-
--- 4. GLUE LOGIC
 local function stopLock()
     targetLock = false
-    lockBtn.Text = "TARGET LOCK: OFF"
-    lockBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     if lockConnection then lockConnection:Disconnect() lockConnection = nil end
 end
 
 local function startLock(targetP)
-    if lockConnection then lockConnection:Disconnect() end
+    stopLock()
     targetLock = true
-    lockBtn.Text = "LOCKED: " .. targetP.Name:sub(1,8)
-    lockBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 80)
-    
     lockConnection = RunService.Heartbeat:Connect(function()
         if not targetLock then return end
         if player.Character and targetP.Character then
@@ -96,37 +75,76 @@ local function startLock(targetP)
     end)
 end
 
--- 5. INTERACTION
+-- 3. PLAYER LIST REFRESH
+local function updateList()
+    for _, child in pairs(scroll:GetChildren()) do
+        if child:IsA("TextButton") then child:Destroy() end
+    end
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= player then
+            local btn = Instance.new("TextButton", scroll)
+            btn.Size = UDim2.new(1, -10, 0, 30)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            btn.Text = p.DisplayName
+            btn.TextColor3 = Color3.new(1,1,1)
+            btn.Font = Enum.Font.SourceSans
+            Instance.new("UICorner", btn)
+            
+            btn.MouseButton1Click:Connect(function()
+                startLock(p)
+            end)
+        end
+    end
+    scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+end
+
+-- 4. ROCKET THREAD
+task.spawn(function()
+    while true do
+        if isLooping then
+            local r = getRockets()
+            if player.Character and #r > 0 then
+                for _, item in pairs(r) do
+                    if not isLooping then break end
+                    item.Parent = player.Character
+                    task.wait(0.01)
+                    item:Activate()
+                    task.wait(0.05)
+                    item.Parent = player.Backpack
+                end
+            end
+        end
+        task.wait(0.01)
+    end
+end)
+
+-- 5. FOOTER BUTTONS
+local loopBtn = Instance.new("TextButton", main)
+loopBtn.Size = UDim2.new(0.4, 0, 0, 40)
+loopBtn.Position = UDim2.new(0.05, 0, 0.8, 0)
+loopBtn.Text = "LOOP: OFF"
+loopBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+loopBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", loopBtn)
+
 loopBtn.MouseButton1Click:Connect(function()
     isLooping = not isLooping
-    loopBtn.Text = isLooping and "ROCKET LOOP: ON" or "ROCKET LOOP: OFF"
+    loopBtn.Text = isLooping and "LOOP: ON" or "LOOP: OFF"
     loopBtn.BackgroundColor3 = isLooping and Color3.fromRGB(100, 0, 0) or Color3.fromRGB(200, 0, 0)
 end)
 
-lockBtn.MouseButton1Click:Connect(function()
-    if targetLock then stopLock() else
-        print("Use ;rocket [name] to lock someone!")
-    end
-end)
+local stopBtn = Instance.new("TextButton", main)
+stopBtn.Size = UDim2.new(0.4, 0, 0, 40)
+stopBtn.Position = UDim2.new(0.55, 0, 0.8, 0)
+stopBtn.Text = "STOP LOCK"
+stopBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+stopBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", stopBtn)
 
-player.Chatted:Connect(function(msg)
-    local args = msg:split(" ")
-    if args[1]:lower() == ";rocket" and args[2] then
-        local tName = args[2]:lower()
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= player and p.Name:lower():sub(1, #tName) == tName then
-                isLooping = true
-                loopBtn.Text = "ROCKET LOOP: ON"
-                loopBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-                startLock(p)
-                break
-            end
-        end
-    end
-end)
+stopBtn.MouseButton1Click:Connect(function() stopLock() end)
 
-exitBtn.MouseButton1Click:Connect(function()
-    isLooping = false
-    stopLock()
-    sg:Destroy()
-end)
+-- Auto-update list when people join/leave
+Players.PlayerAdded:Connect(updateList)
+Players.PlayerRemoving:Connect(updateList)
+updateList()
