@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V30: THE JUMPER FIX ]] --
+-- [[ ROCKET ADMIN V32: AUTO-FIX EDITION ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
 
 -- FLAGS
-local UI_NAME = "RocketAdmin_V30"
+local UI_NAME = "RocketAdmin_V32"
 local isLooping = false
 local targetLock = false
 local isGiveAllActive = false
@@ -20,16 +20,16 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 200, 0, 350) -- Made taller for more buttons
+main.Size = UDim2.new(0, 200, 0, 350)
 main.Position = UDim2.new(0.5, -100, 0.5, -175)
-main.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.Active = true
 main.Draggable = true 
 Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ROCKET ADMIN V30"
+title.Text = "ROCKET ADMIN V32"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -49,22 +49,23 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. THE JUMPER STACKER (Your Example Integrated)
+-- 2. THE IMPROVED AUTO-STACKER (One-by-One Fix)
 task.spawn(function()
     while true do
         local char = player.Character
         local bp = player:FindFirstChild("Backpack")
         
         if isStackingActive and char and bp then
+            -- We process them one by one to prevent inventory lag
             for _, item in ipairs(bp:GetChildren()) do
-                -- Checks for both "RocketJumper" and "Rocket Jumper"
                 if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
                     item.Parent = char
+                    -- Smallest possible wait to allow the engine to "register" the tool
+                    RunService.Heartbeat:Wait() 
                 end
             end
         end
         
-        -- FIRING LOGIC
         if isLooping and char then
             for _, item in ipairs(char:GetChildren()) do
                 if item:IsA("Tool") and (item.Name == "RocketJumper" or item.Name == "Rocket Jumper") then
@@ -76,7 +77,7 @@ task.spawn(function()
     end
 end)
 
--- 3. CARROT EATER
+-- 3. CARROT THREAD
 task.spawn(function()
     while true do
         if isStackingActive then
@@ -96,7 +97,7 @@ task.spawn(function()
     end
 end)
 
--- 4. GIVE ALL
+-- 4. GIVE ALL (Optimized Speed)
 task.spawn(function()
     local blocks = {"SpawnDiamondBlock", "SpawnGalaxyBlock", "SpawnLuckyBlock", "SpawnRainbowBlock", "SpawnSuperBlock"}
     while true do
@@ -106,14 +107,14 @@ task.spawn(function()
                 if remote then pcall(function() remote:FireServer() end) end
             end
         end
-        task.wait(0.5)
+        task.wait(0.6) -- Slightly slower to give the stacker room to breathe
     end
 end)
 
--- 5. BUTTON BUILDER
+-- 5. BUTTONS
 local function createBtn(txtOn, txtOff, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
-    b.Size = UDim2.new(0.9, 0, 0, 30)
+    b.Size = UDim2.new(0.9, 0, 0, 35)
     b.Position = UDim2.new(0.05, 0, 0, y)
     b.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
     b.Text = txtOff
@@ -137,10 +138,9 @@ createBtn("LOOP: ON", "LOOP: OFF", 155, function() return isLooping end, functio
 createBtn("GIVE ALL: ON", "GIVE ALL: OFF", 195, function() return isGiveAllActive end, function(v) isGiveAllActive = v end)
 createBtn("INF STACK: ON", "INF STACK: OFF", 235, function() return isStackingActive end, function(v) isStackingActive = v end)
 
--- STOP TP BUTTON
 local stopTP = Instance.new("TextButton", main)
-stopTP.Size = UDim2.new(0.9, 0, 0, 30)
-stopTP.Position = UDim2.new(0.05, 0, 0, 275)
+stopTP.Size = UDim2.new(0.9, 0, 0, 35)
+stopTP.Position = UDim2.new(0.05, 0, 0, 285)
 stopTP.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 stopTP.Text = "STOP TP LOCK"
 stopTP.TextColor3 = Color3.new(1,1,1)
@@ -178,9 +178,3 @@ local function updateList()
             end)
         end
     end
-end
-
-xBtn.MouseButton1Click:Connect(function() sg:Destroy() isLooping = false isStackingActive = false targetLock = false end)
-Players.PlayerAdded:Connect(updateList)
-Players.PlayerRemoving:Connect(updateList)
-updateList()
