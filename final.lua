@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN: THREAD-ISOLATED FIX + TRIPWIRE + HUD & HITBOXES ]] --
+-- [[ ROCKET ADMIN: THREAD-ISOLATED FIX + TRIPWIRE + HUD ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -11,7 +11,6 @@ local isStackingActive = false
 local isGodMode = false 
 local selectedTargets = {} 
 local swordName = "OverseerwrathSword"
-local expandHitbox = false 
 
 -- 1. UI SETUP
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
@@ -20,8 +19,8 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 470)
-main.Position = UDim2.new(0.5, -110, 0.5, -235)
+main.Size = UDim2.new(0, 220, 0, 430) -- Reverted height
+main.Position = UDim2.new(0.5, -110, 0.5, -215)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.Active = true
 main.Draggable = true 
@@ -46,7 +45,6 @@ xBtn.MouseButton1Click:Connect(function()
     isLooping = false 
     isStackingActive = false 
     isGodMode = false
-    expandHitbox = false
     sg:Destroy() 
 end)
 
@@ -112,13 +110,10 @@ RunService.Heartbeat:Connect(function()
         
         for _, r in pairs(workspace:GetChildren()) do
             if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
-                -- Greatly increased capture radius to grab rockets even if they spawn late
-                local aimRadius = expandHitbox and 500 or 50 
-                if (r.Position - root.Position).Magnitude < aimRadius then
-                    -- INSTANT HIT UPGRADE: Teleport rocket directly inside the victim
-                    r.CFrame = currentT.CFrame
-                    -- Spike the velocity downward into the floor/hitbox so it detonates frame 1
-                    r.AssemblyLinearVelocity = Vector3.new(0, -1000, 0)
+                -- Standard radius, but rockets teleport slightly below the target to prevent physics fling
+                if (r.Position - root.Position).Magnitude < 15 then
+                    r.CFrame = currentT.CFrame * CFrame.new(0, -3, 0) 
+                    r.AssemblyLinearVelocity = Vector3.new(0, 100, 0) -- Slight upward momentum to hit feet instantly
                 end
             end
         end
@@ -136,10 +131,12 @@ workspace.ChildAdded:Connect(function(child)
     if targetPlayer and selectedTargets[targetPlayer] then
         local char = player.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
-        local targetRoot = child:WaitForChild("HumanoidRootPart", 5)
+        
+        -- Optimized yield: wait a max of 2 seconds, checking faster
+        local targetRoot = child:WaitForChild("HumanoidRootPart", 2)
         
         if root and targetRoot then
-            local oldCF = root.CFrame -- ADDED: Save old pos
+            local oldCF = root.CFrame
             root.AssemblyLinearVelocity = Vector3.new(0,0,0)
             root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
             
@@ -149,8 +146,8 @@ workspace.ChildAdded:Connect(function(child)
                 tool:Activate()
             end
             
-            -- ADDED: Wait slightly longer on spawn-catch so the rocket fully generates before snapping back
-            task.wait(0.05) 
+            -- Shorter wait, gets you back faster while still firing
+            task.wait(0.01) 
             root.CFrame = oldCF
         end
     end
@@ -280,11 +277,9 @@ createBtn("GOD MODE: OFF", 260, function() return isGodMode end, function(v) isG
     if btn:IsA("TextButton") then btn.Text = isGodMode and "GOD MODE: ON" or "GOD MODE: OFF" end
 end)
 
-createBtn("EXPAND HITBOX", 300, function() return expandHitbox end, function(v) expandHitbox = v end)
-
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0, 200, 0, 35)
-fixBtn.Position = UDim2.new(0, 10, 0, 340)
+fixBtn.Position = UDim2.new(0, 10, 0, 300) -- Reverted position
 fixBtn.Text = "INSTANT FIX"
 fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 fixBtn.TextColor3 = Color3.new(1,1,1)
