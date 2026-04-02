@@ -1,25 +1,50 @@
--- [[ ROCKET ADMIN: THREAD-ISOLATED FIX + TRIPWIRE + HUD ]] --
+-- [[ SERVICES ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local pGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
 
--- FLAGS
-local UI_NAME = "RocketAdmin_Fixed"
+-- [[ GHOST CORE SETUP ]] --
+local character = player.Character or player.CharacterAdded:Wait()
+local root = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+local fakeRoot = Instance.new("Part")
+fakeRoot.Name = "FakeRoot"
+fakeRoot.Size = root.Size
+fakeRoot.CFrame = root.CFrame
+fakeRoot.Transparency = 1
+fakeRoot.CanCollide = false
+fakeRoot.Parent = character
+
+local bv = Instance.new("BodyVelocity", fakeRoot)
+bv.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+bv.Velocity = Vector3.new(0, 0, 0)
+
+local bg = Instance.new("BodyGyro", fakeRoot)
+bg.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
+bg.CFrame = fakeRoot.CFrame
+
+-- [[ FLAGS ]] --
+local UI_NAME = "RocketAdmin_GhostFixed"
 local isLooping = false
 local isStackingActive = false
 local isGodMode = false 
 local selectedTargets = {} 
 local swordName = "OverseerwrathSword"
+local FLY_SPEED = 100
+local running = true
 
--- 1. UI SETUP
+-- [[ 1. UI SETUP ]] --
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
 local sg = Instance.new("ScreenGui", pGui)
 sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 430) -- Reverted height
+main.Size = UDim2.new(0, 220, 0, 430)
 main.Position = UDim2.new(0.5, -110, 0.5, -215)
 main.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 main.Active = true
@@ -28,7 +53,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "ISOLATED STRIKE"
+title.Text = "GHOST ISOLATED STRIKE"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
@@ -42,9 +67,13 @@ xBtn.TextColor3 = Color3.new(1,1,1)
 Instance.new("UICorner", xBtn)
 
 xBtn.MouseButton1Click:Connect(function() 
+    running = false
     isLooping = false 
     isStackingActive = false 
     isGodMode = false
+    fakeRoot:Destroy()
+    root.Anchored = false
+    humanoid.PlatformStand = false
     sg:Destroy() 
 end)
 
@@ -55,25 +84,29 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. UNIVERSAL SHIELD (THREAD 1)
+-- [[ 2. UNIVERSAL SHIELD (THREAD 1) ]] --
 RunService.Heartbeat:Connect(function()
+    if not running then return end
     local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChild("Humanoid")
     
-    if root and hum then
-        local pos = root.Position
-        if pos.Y < -20 or root.AssemblyLinearVelocity.Magnitude > 950 then
-            root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-            root.CFrame = CFrame.new(pos.X, 150, pos.Z)
+    if rootPart and hum then
+        local pos = rootPart.Position
+        if pos.Y < -20 or rootPart.AssemblyLinearVelocity.Magnitude > 950 then
+            rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            -- If not attacking, stay at seat/safe height
+            if not isLooping then
+                rootPart.CFrame = CFrame.new(pos.X, 150, pos.Z)
+            end
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end
 end)
 
--- 3. AGGRESSIVE STACKER (THREAD 2 - STRICT RENDERSTEP)
+-- [[ 3. AGGRESSIVE STACKER (THREAD 2) ]] --
 RunService.RenderStepped:Connect(function()
-    if isStackingActive then
+    if isStackingActive and running then
         local bp = player:FindFirstChild("Backpack")
         local char = player.Character
         if bp and char then
@@ -86,12 +119,13 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. PHASE TELEPORT & ZERO-TRAVEL AIM (THREAD 3 - HEARTBEAT)
+-- [[ 4. GHOST LOOP ATTACK (THREAD 3 - MODIFIED) ]] --
 local targetIndex = 1
 RunService.Heartbeat:Connect(function()
+    if not running or not isLooping then return end
     local char = player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root or not isLooping then return end
+    local realRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if not realRoot then return end
 
     local targets = {}
     for p, active in pairs(selectedTargets) do
@@ -104,41 +138,73 @@ RunService.Heartbeat:Connect(function()
         targetIndex = (targetIndex % #targets) + 1
         local currentT = targets[targetIndex]
         
-        local oldCF = root.CFrame
-        root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-        root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+        -- MODIFICATION: Move the GHOST (fakeRoot) instead of the actual player
+        fakeRoot.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+        
+        -- Sync the REAL root for rocket spawning/hitbox
+        realRoot.Anchored = false
+        realRoot.CFrame = fakeRoot.CFrame
         
         for _, r in pairs(workspace:GetChildren()) do
             if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
-                -- Standard radius, but rockets teleport slightly below the target to prevent physics fling
-                if (r.Position - root.Position).Magnitude < 15 then
+                if (r.Position - fakeRoot.Position).Magnitude < 15 then
                     r.CFrame = currentT.CFrame * CFrame.new(0, -3, 0) 
-                    r.AssemblyLinearVelocity = Vector3.new(0, 100, 0) -- Slight upward momentum to hit feet instantly
+                    r.AssemblyLinearVelocity = Vector3.new(0, 100, 0)
                 end
             end
         end
         
         task.wait(0.01)
-        root.CFrame = oldCF
+        realRoot.Anchored = true -- Snap back to safety
     end
 end)
 
--- 5. ZERO-DELAY TRIPWIRE (SPAWN CATCHER)
+-- [[ 5. AERO FLIGHT & VISUAL SYNC (THREAD 4) ]] --
+RunService.PreRender:Connect(function(dt)
+    if not running then return end
+
+    -- Fly movement
+    local moveDir = Vector3.new(0,0,0)
+    if not isLooping then
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camera.CFrame.LookVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camera.CFrame.RightVector end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
+        bv.Velocity = moveDir * FLY_SPEED
+        bg.CFrame = camera.CFrame
+    else
+        bv.Velocity = Vector3.new(0,0,0)
+    end
+
+    -- Visual Character Sync
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") and part ~= root and part ~= fakeRoot then
+            part.CFrame = fakeRoot.CFrame * root.CFrame:ToObjectSpace(part.CFrame)
+            part.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        end
+    end
+    workspace.CurrentCamera.CameraSubject = fakeRoot
+end)
+
+-- [[ 6. ZERO-DELAY TRIPWIRE (SPAWN CATCHER) ]] --
 workspace.ChildAdded:Connect(function(child)
-    if not isLooping then return end
+    if not isLooping or not running then return end
     
     local targetPlayer = Players:GetPlayerFromCharacter(child)
     if targetPlayer and selectedTargets[targetPlayer] then
         local char = player.Character
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        
-        -- Optimized yield: wait a max of 2 seconds, checking faster
+        local realRoot = char and char:FindFirstChild("HumanoidRootPart")
         local targetRoot = child:WaitForChild("HumanoidRootPart", 2)
         
-        if root and targetRoot then
-            local oldCF = root.CFrame
-            root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-            root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+        if realRoot and targetRoot then
+            -- TP GHOST
+            fakeRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+            
+            -- TP REAL ROOT (BLINK)
+            realRoot.Anchored = false
+            realRoot.CFrame = fakeRoot.CFrame
             
             local tool = char:FindFirstChild("RocketJumper") or player.Backpack:FindFirstChild("RocketJumper")
             if tool then
@@ -146,16 +212,15 @@ workspace.ChildAdded:Connect(function(child)
                 tool:Activate()
             end
             
-            -- Shorter wait, gets you back faster while still firing
             task.wait(0.01) 
-            root.CFrame = oldCF
+            realRoot.Anchored = true
         end
     end
 end)
 
--- 6. ROCKET CYCLE (THREAD 4 - INDEPENDENT LOOP)
+-- [[ 7. ROCKET CYCLE (THREAD 5) ]] --
 task.spawn(function()
-    while true do
+    while running do
         local char = player.Character
         local bp = player:FindFirstChild("Backpack")
         
@@ -169,11 +234,9 @@ task.spawn(function()
             for i = 1, #jumpers do
                 if not isLooping then break end
                 local tool = jumpers[i]
-                
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
                 task.wait(0.02)
-                
                 if not isStackingActive and bp then
                     tool.Parent = bp
                 end
@@ -183,13 +246,12 @@ task.spawn(function()
     end
 end)
 
--- 7. GOD MODE STACKER (THREAD 5 - INDEPENDENT LOOP)
+-- [[ 8. GOD MODE STACKER (THREAD 6) ]] --
 task.spawn(function()
-    while true do
+    while running do
         if isGodMode then
             local char = player.Character
             local bp = player:FindFirstChild("Backpack")
-            
             if char and bp then
                 local swords = {}
                 for _, t in pairs(char:GetChildren()) do if t.Name == swordName then table.insert(swords, t) end end
@@ -207,10 +269,10 @@ task.spawn(function()
     end
 end)
 
--- 8. PRECISION CARROT (THREAD 6 - EXACT V63 RESTORATION)
+-- [[ 9. PRECISION CARROT (THREAD 7) ]] --
 task.spawn(function()
     local lastStack = false
-    while true do
+    while running do
         if isStackingActive then
             if not lastStack then lastStack = true task.wait(3) end
             local bp = player:FindFirstChild("Backpack")
@@ -232,8 +294,9 @@ task.spawn(function()
     end
 end)
 
--- 9. TARGET HUD ESP (THREAD 7 - VISUALS)
+-- [[ 10. TARGET HUD ESP (THREAD 8) ]] --
 RunService.RenderStepped:Connect(function()
+    if not running then return end
     for _, p in pairs(Players:GetPlayers()) do
         if p ~= player and p.Character then
             local highlight = p.Character:FindFirstChild("AdminTargetHUD")
@@ -253,7 +316,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 10. BUTTONS
+-- [[ 11. BUTTONS & TARGET LIST ]] --
 local function createBtn(txt, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0, 200, 0, 35)
@@ -279,7 +342,7 @@ end)
 
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0, 200, 0, 35)
-fixBtn.Position = UDim2.new(0, 10, 0, 300) -- Reverted position
+fixBtn.Position = UDim2.new(0, 10, 0, 300)
 fixBtn.Text = "INSTANT FIX"
 fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 fixBtn.TextColor3 = Color3.new(1,1,1)
@@ -315,3 +378,7 @@ end
 updateList()
 Players.PlayerAdded:Connect(updateList)
 Players.PlayerRemoving:Connect(updateList)
+
+-- INITIAL STATE --
+root.Anchored = true
+humanoid.PlatformStand = true
