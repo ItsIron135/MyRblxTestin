@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN ]] --
+-- [[ ROCKET SCRIPT ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -33,7 +33,6 @@ title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
 
--- RESTORED: X EXIT BUTTON
 local xBtn = Instance.new("TextButton", main)
 xBtn.Size = UDim2.new(0, 25, 0, 25)
 xBtn.Position = UDim2.new(1, -30, 0, 5)
@@ -63,7 +62,7 @@ scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 2
 local layout = Instance.new("UIListLayout", scroll)
 
--- 2. RESTORED: UNIVERSAL SHIELD (VOID PROTECTION)
+-- 2. UNIVERSAL VOID PROTECTION
 RunService.Heartbeat:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -79,7 +78,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 3. AGGRESSIVE STACKER (STRICT TOGGLE)
+-- 3. JUMPER STACKER
 RunService.RenderStepped:Connect(function()
     if isStackingActive then
         local bp = player:FindFirstChild("Backpack")
@@ -94,7 +93,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 4. PHASE TELEPORT & SILENT AIM (WITH 0.5 OFFSET)
+-- 4. TELEPORT & SOFT AIM
 local targetIndex = 1
 RunService.Heartbeat:Connect(function()
     local char = player.Character
@@ -113,15 +112,17 @@ RunService.Heartbeat:Connect(function()
         local currentT = targets[targetIndex]
         
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
-        -- Offset restored to 0.5
+        -- Offset 0.5
         root.CFrame = currentT.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
         
         if isLooping then
             for _, r in pairs(workspace:GetChildren()) do
                 if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
-                    if (r.Position - root.Position).Magnitude < 15 then
+                    -- Soft Aim Check: If the rocket is within range of the player, guide it
+                    if (r.Position - root.Position).Magnitude < 35 then
+                        -- Smoothly interpolate trajectory toward current target
                         r.CFrame = CFrame.lookAt(r.Position, currentT.Position)
-                        r.AssemblyLinearVelocity = (currentT.Position - r.Position).Unit * 300
+                        r.AssemblyLinearVelocity = (currentT.Position - r.Position).Unit * 350
                     end
                 end
             end
@@ -129,7 +130,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 5. 20MS TACTICAL CYCLE
+-- 5. 20MS CYCLE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -159,7 +160,7 @@ task.spawn(function()
     end
 end)
 
--- 6. GOD MODE STACKER (INTEGRATED)
+-- 6. GOD MODE STACKER
 task.spawn(function()
     while true do
         if isGodMode then
