@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN: THREAD-ISOLATED FIX ]] --
+-- [[ ROCKET ADMIN: THREAD-ISOLATED FIX + TRIPWIRE ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -122,7 +122,31 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 5. ROCKET CYCLE (THREAD 4 - INDEPENDENT LOOP)
+-- 5. ZERO-DELAY TRIPWIRE (SPAWN CATCHER)
+workspace.ChildAdded:Connect(function(child)
+    if not isLooping then return end
+    
+    local targetPlayer = Players:GetPlayerFromCharacter(child)
+    if targetPlayer and selectedTargets[targetPlayer] then
+        local char = player.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local targetRoot = child:WaitForChild("HumanoidRootPart", 5)
+        
+        if root and targetRoot then
+            -- Pre-emptive Strike
+            root.AssemblyLinearVelocity = Vector3.new(0,0,0)
+            root.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 0.2) * CFrame.Angles(math.rad(-90), 0, 0)
+            
+            local tool = char:FindFirstChild("RocketJumper") or player.Backpack:FindFirstChild("RocketJumper")
+            if tool then
+                tool.Parent = char
+                tool:Activate()
+            end
+        end
+    end
+end)
+
+-- 6. ROCKET CYCLE (THREAD 4 - INDEPENDENT LOOP)
 task.spawn(function()
     while true do
         local char = player.Character
@@ -152,7 +176,7 @@ task.spawn(function()
     end
 end)
 
--- 6. GOD MODE STACKER (THREAD 5 - INDEPENDENT LOOP)
+-- 7. GOD MODE STACKER (THREAD 5 - INDEPENDENT LOOP)
 task.spawn(function()
     while true do
         if isGodMode then
@@ -176,7 +200,7 @@ task.spawn(function()
     end
 end)
 
--- 7. PRECISION CARROT (THREAD 6 - EXACT V63 RESTORATION)
+-- 8. PRECISION CARROT (THREAD 6 - EXACT V63 RESTORATION)
 task.spawn(function()
     local lastStack = false
     while true do
@@ -201,7 +225,7 @@ task.spawn(function()
     end
 end)
 
--- 8. BUTTONS
+-- 9. BUTTONS
 local function createBtn(txt, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
     b.Size = UDim2.new(0, 200, 0, 35)
