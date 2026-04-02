@@ -1,16 +1,3 @@
-That delay is caused by Rocket Travel Time combined with Projectile Spawn Delay.
-
-When your script activates the Rocket Jumper, the game engine takes a tiny fraction of a second to actually spawn the rocket part in the workspace. Because your "Phantom" loop teleports you to the target and snaps you back in just 0.01 seconds, you are often already back at your base by the time the rocket physically appears.
-
-Because the rocket spawns at your base, the "Silent Aim" catches it and shoots it at the target from across the map. Even at 600 velocity, a rocket takes time to cross a large map, which gives the victim that annoying window to stand there unharmed.
-The Fix: "Zero-Travel" Projectile Teleportation
-
-Instead of just pointing the rockets and giving them speed, we are going to force the "Silent Aim" to instantly teleport the rocket directly into the victim's chest and spike it downward, causing a frame-1 explosion with zero travel time.
-
-I have updated Section 4 (Silent Aim) and Section 5 (Tripwire) to ensure the rockets physically spawn on the target and detonate instantly. I kept all your other features exactly as they were.
-The Updated Script:
-Lua
-
 -- [[ ROCKET ADMIN: THREAD-ISOLATED FIX + TRIPWIRE + HUD & HITBOXES ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
