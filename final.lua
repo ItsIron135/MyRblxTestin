@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V72 + GHOST + RAINBOW ]] --
+-- [[ ROCKET ADMIN ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -30,7 +30,7 @@ Instance.new("UICorner", main)
 
 local title = Instance.new("TextLabel", main)
 title.Size = UDim2.new(1, 0, 0, 35)
-title.Text = "PHASE STRIKE V72"
+title.Text = "ROCKET KILL"
 title.TextColor3 = Color3.fromRGB(0, 255, 200)
 title.BackgroundTransparency = 1
 title.Font = Enum.Font.SourceSansBold
