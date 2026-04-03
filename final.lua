@@ -150,7 +150,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 5. 20MS TACTICAL CYCLE
+-- 5. 40MS TACTICAL CYCLE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -169,7 +169,7 @@ task.spawn(function()
                 
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
-                task.wait(0.02) 
+                task.wait(0.04) 
                 
                 if not isStackingActive and bp then
                     tool.Parent = bp
