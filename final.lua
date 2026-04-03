@@ -207,12 +207,12 @@ task.spawn(function()
                     if item.Name == rainbowName then table.insert(held, item) end
                 end
 
-                if #held < 31 then
+                if #held < 9 then
                     for _, item in pairs(bp:GetChildren()) do
                         if item.Name == rainbowName then
                             item.Parent = char
                             table.insert(held, item)
-                            if #held >=31 then break end
+                            if #held >=9 then break end
                         end
                     end
                 else
