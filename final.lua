@@ -145,7 +145,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 5. 20MS TACTICAL CYCLE
+-- 5. 40MS TACTICAL CYCLE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -161,7 +161,7 @@ task.spawn(function()
                 local tool = jumpers[i]
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
-                task.wait(0.02) 
+                task.wait(0.04) 
                 if not isStackingActive and bp then tool.Parent = bp end
             end
         end
@@ -207,12 +207,12 @@ task.spawn(function()
                     if item.Name == rainbowName then table.insert(held, item) end
                 end
 
-                if #held < 20 then
+                if #held < 6 then
                     for _, item in pairs(bp:GetChildren()) do
                         if item.Name == rainbowName then
                             item.Parent = char
                             table.insert(held, item)
-                            if #held >=20 then break end
+                            if #held >=6 then break end
                         end
                     end
                 else
