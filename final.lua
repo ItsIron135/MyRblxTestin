@@ -145,7 +145,7 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
--- 5. 40MS TACTICAL CYCLE
+-- 5. 20MS TACTICAL CYCLE
 task.spawn(function()
     while true do
         local char = player.Character
@@ -161,7 +161,7 @@ task.spawn(function()
                 local tool = jumpers[i]
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
-                task.wait(0.04) 
+                task.wait(0.02) 
                 if not isStackingActive and bp then tool.Parent = bp end
             end
         end
