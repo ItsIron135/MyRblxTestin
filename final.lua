@@ -1,4 +1,4 @@
--- [[ ROCKET ADMIN V72 + GHOST ]] --
+-- [[ ROCKET ADMIN V72 + GHOST + RAINBOW ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
@@ -9,8 +9,10 @@ local UI_NAME = "RocketAdmin_V72"
 local isLooping = false
 local isStackingActive = false
 local isGodMode = false 
+local isRainbowActive = false -- NEW FLAG
 local selectedTargets = {} 
 local swordName = "OverseerwrathSword"
+local rainbowName = "RainbowPeriastron" -- NEW ITEM
 
 -- 1. UI SETUP
 if pGui:FindFirstChild(UI_NAME) then pGui[UI_NAME]:Destroy() end
@@ -19,8 +21,8 @@ sg.Name = UI_NAME
 sg.ResetOnSpawn = false
 
 local main = Instance.new("Frame", sg)
-main.Size = UDim2.new(0, 220, 0, 430)
-main.Position = UDim2.new(0.5, -110, 0.5, -215)
+main.Size = UDim2.new(0, 220, 0, 480) -- Increased height for new button
+main.Position = UDim2.new(0.5, -110, 0.5, -240)
 main.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 main.Active = true
 main.Draggable = true 
@@ -46,10 +48,11 @@ xBtn.MouseButton1Click:Connect(function()
     isLooping = false 
     isStackingActive = false 
     isGodMode = false
+    isRainbowActive = false
     local char = player.Character
     if char then
         for _, t in pairs(char:GetChildren()) do
-            if t.Name == swordName then t.Parent = player.Backpack end
+            if t.Name == swordName or t.Name == rainbowName then t.Parent = player.Backpack end
         end
     end
     selectedTargets = {} 
@@ -104,9 +107,7 @@ RunService.Heartbeat:Connect(function()
 
     local targets = {}
     for p, active in pairs(selectedTargets) do
-        if active then
-            table.insert(targets, p)
-        end
+        if active then table.insert(targets, p) end
     end
 
     if #targets > 0 then
@@ -118,12 +119,8 @@ RunService.Heartbeat:Connect(function()
 
         root.AssemblyLinearVelocity = Vector3.new(0,0,0)
 
-        -- Check if target is alive and valid
         if tChar and tRoot and tHum and tHum.Health > 0 then
-            -- Original TP Logic
             root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 0.5) * CFrame.Angles(math.rad(-90), 0, 0)
-            
-            -- Projectile Redirection
             for _, r in pairs(workspace:GetChildren()) do
                 if r:IsA("BasePart") and (r.Name == "Rocket" or r.Name == "Projectile") then
                     if (r.Position - root.Position).Magnitude < 15 then
@@ -133,12 +130,10 @@ RunService.Heartbeat:Connect(function()
                 end
             end
         else
-            -- GHOST SPAWN LOGIC (Triggered when target is dead/missing)
             local spawnPoint = tPlayer.RespawnLocation
             if spawnPoint then
                 root.CFrame = spawnPoint.CFrame + Vector3.new(0, 3, 0)
             else
-                -- Fallback to any enabled SpawnLocation in game
                 for _, obj in ipairs(workspace:GetDescendants()) do
                     if obj:IsA("SpawnLocation") and obj.Enabled then
                         root.CFrame = obj.CFrame + Vector3.new(0, 3, 0)
@@ -155,25 +150,19 @@ task.spawn(function()
     while true do
         local char = player.Character
         local bp = player:FindFirstChild("Backpack")
-        
         if isLooping and char then
             local source = isStackingActive and char or (bp or char)
             local jumpers = {}
             for _, t in pairs(source:GetChildren()) do
                 if t.Name == "RocketJumper" then table.insert(jumpers, t) end
             end
-            
             for i = 1, #jumpers do
                 if not isLooping then break end
                 local tool = jumpers[i]
-                
                 if tool.Parent ~= char then tool.Parent = char end
                 tool:Activate()
                 task.wait(0.04) 
-                
-                if not isStackingActive and bp then
-                    tool.Parent = bp
-                end
+                if not isStackingActive and bp then tool.Parent = bp end
             end
         end
         task.wait(0.01)
@@ -186,18 +175,14 @@ task.spawn(function()
         if isGodMode then
             local char = player.Character
             local bp = player:FindFirstChild("Backpack")
-            
             if char and bp then
                 local swords = {}
                 for _, t in pairs(char:GetChildren()) do
                     if t.Name == swordName then table.insert(swords, t) end
                 end
                 for _, t in pairs(bp:GetChildren()) do
-                    if t.Name == swordName and #swords < 10 then
-                        table.insert(swords, t)
-                    end
+                    if t.Name == swordName and #swords < 10 then table.insert(swords, t) end
                 end
-
                 if #swords > 0 then
                     for _, s in pairs(swords) do s.Parent = char end
                     task.wait(0.02)
@@ -207,6 +192,39 @@ task.spawn(function()
             end
         end
         task.wait(0.01)
+    end
+end)
+
+-- NEW: 6.5 RAINBOW PERIASTRON STACKER (AUTO-OFF AT 10)
+task.spawn(function()
+    while true do
+        if isRainbowActive then
+            local char = player.Character
+            local bp = player:FindFirstChild("Backpack")
+            if char and bp then
+                local held = {}
+                for _, item in pairs(char:GetChildren()) do
+                    if item.Name == rainbowName then table.insert(held, item) end
+                end
+
+                if #held < 10 then
+                    for _, item in pairs(bp:GetChildren()) do
+                        if item.Name == rainbowName then
+                            item.Parent = char
+                            table.insert(held, item)
+                            if #held >= 10 then break end
+                        end
+                    end
+                else
+                    -- REACHED 10: Turn off flag to stop lag
+                    isRainbowActive = false
+                    -- Force UI button color update if it exists
+                    local rbBtn = main:FindFirstChild("RAINBOW STACK")
+                    if rbBtn then rbBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35) end
+                end
+            end
+        end
+        task.wait(0.1)
     end
 end)
 
@@ -238,6 +256,7 @@ end)
 -- 8. BUTTONS
 local function createBtn(txt, y, getVal, setVal)
     local b = Instance.new("TextButton", main)
+    b.Name = txt
     b.Size = UDim2.new(0, 200, 0, 35)
     b.Position = UDim2.new(0, 10, 0, y)
     b.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
@@ -268,9 +287,12 @@ godBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- RAINBOW BUTTON
+createBtn("RAINBOW STACK", 300, function() return isRainbowActive end, function(v) isRainbowActive = v end)
+
 local fixBtn = Instance.new("TextButton", main)
 fixBtn.Size = UDim2.new(0, 200, 0, 35)
-fixBtn.Position = UDim2.new(0, 10, 0, 300)
+fixBtn.Position = UDim2.new(0, 10, 0, 340)
 fixBtn.Text = "INSTANT FIX"
 fixBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
 fixBtn.TextColor3 = Color3.new(1,1,1)
