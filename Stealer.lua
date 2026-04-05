@@ -11,8 +11,8 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 200, 0, 540)
-MF.Position = UDim2.new(0.8, 0, 0.5, -270)
+MF.Size = UDim2.new(0, 180, 0, 450) -- Smaller width and height
+MF.Position = UDim2.new(0.85, 0, 0.5, -225)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -23,7 +23,7 @@ T.BackgroundTransparency = 1
 T.Text = "Spawn Clone"
 T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
-T.TextSize = 18
+T.TextSize = 16
 
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30)
@@ -34,7 +34,7 @@ CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() SG:Destroy() end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -270)
+SF.Size = UDim2.new(1, 0, 1, -245) -- Adjusted for smaller bottom stack
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -57,32 +57,88 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
+-- FLY SYSTEM
+local Flying = false
+local FlySpeed = 100 
+local FLB = Instance.new("TextButton", MF)
+FLB.Size = UDim2.new(1, 0, 0, 30)
+FLB.Position = UDim2.new(0, 0, 1, -210)
+FLB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FLB.Text = "Fly: OFF"
+FLB.TextColor3 = Color3.new(1, 1, 1)
+FLB.Font = Enum.Font.Code
+FLB.TextSize = 14
+
+FLB.MouseButton1Click:Connect(function()
+    Flying = not Flying
+    FLB.Text = Flying and "Fly: ON" or "Fly: OFF"
+    FLB.BackgroundColor3 = Flying and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(60, 60, 60)
+    
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    if Flying then
+        local bv = Instance.new("BodyVelocity", root)
+        bv.Name = "FlyVelocity"
+        bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        
+        local bg = Instance.new("BodyGyro", root)
+        bg.Name = "FlyGyro"
+        bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+        bg.P = 9e4
+        bg.CFrame = root.CFrame
+        
+        task.spawn(function()
+            while Flying and root and root.Parent do
+                local cam = workspace.CurrentCamera
+                local dir = Vector3.new(0, 0, 0)
+                
+                local UIS = game:GetService("UserInputService")
+                if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
+                if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
+                
+                bv.Velocity = dir.Unit ~= dir.Unit and Vector3.new(0, 0, 0) or dir.Unit * FlySpeed
+                bg.CFrame = cam.CFrame
+                task.wait()
+            end
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+        end)
+    end
+end)
+
 -- SPAM SPAWN TOGGLE
 local SpamSpawnActive = false
 local SSB = Instance.new("TextButton", MF)
-SSB.Size = UDim2.new(1, 0, 0, 40)
-SSB.Position = UDim2.new(0, 0, 1, -240)
+SSB.Size = UDim2.new(1, 0, 0, 30)
+SSB.Position = UDim2.new(0, 0, 1, -180)
 SSB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SSB.Text = "Spam TP: OFF"
+SSB.Text = "Spam Spawn: OFF"
 SSB.TextColor3 = Color3.new(1, 1, 1)
 SSB.Font = Enum.Font.Code
-SSB.TextSize = 16
+SSB.TextSize = 14
 
 SSB.MouseButton1Click:Connect(function()
     SpamSpawnActive = not SpamSpawnActive
-    SSB.Text = SpamSpawnActive and "Spam TP: ON" or "Spam TP: OFF"
+    SSB.Text = SpamSpawnActive and "Spam Spawn: ON" or "Spam Spawn: OFF"
     SSB.BackgroundColor3 = SpamSpawnActive and Color3.fromRGB(50, 50, 150) or Color3.fromRGB(60, 60, 60)
 end)
 
 -- CLIENT KILL BUTTON
 local CKB = Instance.new("TextButton", MF)
-CKB.Size = UDim2.new(1, 0, 0, 40)
-CKB.Position = UDim2.new(0, 0, 1, -200)
+CKB.Size = UDim2.new(1, 0, 0, 30)
+CKB.Position = UDim2.new(0, 0, 1, -150)
 CKB.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-CKB.Text = "Client Kill Clone"
+CKB.Text = "Client Kill"
 CKB.TextColor3 = Color3.new(1, 1, 1)
 CKB.Font = Enum.Font.Code
-CKB.TextSize = 16
+CKB.TextSize = 14
 
 CKB.MouseButton1Click:Connect(function()
     local target = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
@@ -91,32 +147,29 @@ CKB.MouseButton1Click:Connect(function()
     
     if target then
         local cloneTorso = target:FindFirstChild("Torso") or target:FindFirstChild("HumanoidRootPart")
-        
         if cloneTorso and root then
             cloneTorso.CFrame = root.CFrame * CFrame.new(0, 0, 7) * CFrame.Angles(0, math.rad(180), 0)
             task.wait(0.1)
         end
-
         target:BreakJoints()
         local h = target:FindFirstChildOfClass("Humanoid")
         if h then h.Health = 0 end
-        
         CKB.Text = "KILLED"
         task.wait(1)
-        CKB.Text = "Client Kill Clone"
+        CKB.Text = "Client Kill"
     end
 end)
 
 -- GHOST TOUCH SYSTEM
 local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
-GTB.Size = UDim2.new(1, 0, 0, 40)
-GTB.Position = UDim2.new(0, 0, 1, -160)
+GTB.Size = UDim2.new(1, 0, 0, 30)
+GTB.Position = UDim2.new(0, 0, 1, -120)
 GTB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GTB.Text = "Ghost Touch: OFF"
 GTB.TextColor3 = Color3.new(1, 1, 1)
 GTB.Font = Enum.Font.Code
-GTB.TextSize = 16
+GTB.TextSize = 14
 
 GTB.MouseButton1Click:Connect(function()
     GhostTouchActive = not GhostTouchActive
@@ -127,26 +180,24 @@ end)
 -- INF STACK SYSTEM
 local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
-STB.Size = UDim2.new(1, 0, 0, 40)
-STB.Position = UDim2.new(0, 0, 1, -120)
+STB.Size = UDim2.new(1, 0, 0, 30)
+STB.Position = UDim2.new(0, 0, 1, -90)
 STB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 STB.Text = "Inf Stack: OFF"
 STB.TextColor3 = Color3.new(1, 1, 1)
 STB.Font = Enum.Font.Code
-STB.TextSize = 16
+STB.TextSize = 14
 
 STB.MouseButton1Click:Connect(function()
     IsStackingActive = not IsStackingActive
     STB.Text = IsStackingActive and "Inf Stack: ON" or "Inf Stack: OFF"
     STB.BackgroundColor3 = IsStackingActive and Color3.fromRGB(120, 50, 120) or Color3.fromRGB(70, 70, 70)
     
-    -- CARROT LOGIC ADDED BACK
     if IsStackingActive then
         local bp = LP:FindFirstChild("Backpack")
         local char = LP.Character
         local hum = char and char:FindFirstChild("Humanoid")
         local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
-        
         if carrot and hum then
             hum:EquipTool(carrot)
             task.wait(0.1)
@@ -160,13 +211,13 @@ end)
 -- GIVE ALL BLOCKS SYSTEM
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
-GAB.Size = UDim2.new(1, 0, 0, 40)
-GAB.Position = UDim2.new(0, 0, 1, -80)
+GAB.Size = UDim2.new(1, 0, 0, 30)
+GAB.Position = UDim2.new(0, 0, 1, -60)
 GAB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GAB.Text = "Give All: OFF"
 GAB.TextColor3 = Color3.new(1, 1, 1)
 GAB.Font = Enum.Font.Code
-GAB.TextSize = 16
+GAB.TextSize = 14
 
 GAB.MouseButton1Click:Connect(function()
     GiveAllActive = not GiveAllActive
@@ -177,13 +228,13 @@ end)
 -- GOD MODE TOGGLE
 local isGodMode = false
 local GDB = Instance.new("TextButton", MF)
-GDB.Size = UDim2.new(1, 0, 0, 40)
-GDB.Position = UDim2.new(0, 0, 1, -40)
+GDB.Size = UDim2.new(1, 0, 0, 30)
+GDB.Position = UDim2.new(0, 0, 1, -30)
 GDB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GDB.Text = "God Mode: OFF"
 GDB.TextColor3 = Color3.new(1, 1, 1)
 GDB.Font = Enum.Font.Code
-GDB.TextSize = 16
+GDB.TextSize = 14
 
 GDB.MouseButton1Click:Connect(function()
     isGodMode = not isGodMode
@@ -191,7 +242,7 @@ GDB.MouseButton1Click:Connect(function()
     GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
 end)
 
--- GOD MODE LOGIC (OverseerwrathSword)
+-- GOD MODE LOGIC
 task.spawn(function() 
     local swordName = "OverseerwrathSword"
     local player = LP
@@ -219,7 +270,7 @@ task.spawn(function()
     end 
 end)
 
--- GLOBAL HEARTBEAT (MULTI-HOLD INF STACK)
+-- GLOBAL HEARTBEAT
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local bp = LP:FindFirstChild("Backpack")
@@ -268,7 +319,6 @@ local UsedSwords = {}
 local CurrentTarget = nil
 local SpamConnection = nil
 
--- CLONE SPAWNING / TP LOGIC
 local function E(t, btn)
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
@@ -353,16 +403,15 @@ end
 
 local function R()
     for _, item in pairs(SF:GetChildren()) do if item:IsA("TextButton") then item:Destroy() end end
-    local y = 0
     for _, p in pairs(P:GetPlayers()) do 
         if p ~= LP then
             local b = Instance.new("TextButton", SF)
-            b.Size = UDim2.new(1, 0, 0, 30) 
+            b.Size = UDim2.new(1, 0, 0, 25) 
             b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             b.Text = p.Name
             b.TextColor3 = Color3.new(1, 1, 1)
             b.Font = Enum.Font.Code
-            b.TextSize = 16 
+            b.TextSize = 14 
             b.MouseButton1Click:Connect(function() E(p, b) end)
         end 
     end 
