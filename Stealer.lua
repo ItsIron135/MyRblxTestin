@@ -11,7 +11,7 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 450) -- Smaller width and height
+MF.Size = UDim2.new(0, 180, 0, 450) 
 MF.Position = UDim2.new(0.85, 0, 0.5, -225)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
@@ -34,7 +34,7 @@ CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() SG:Destroy() end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -245) -- Adjusted for smaller bottom stack
+SF.Size = UDim2.new(1, 0, 1, -245) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -337,30 +337,27 @@ local function E(t, btn)
 
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
-    -- UPDATED GIVE DROPPED GEAR LOGIC WITH HARD RESET
+    -- NUKE CLEANUP LOGIC FOR GIVE DROPPED GEAR
     if GiveDroppedGearActive then
         CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
         
-        -- PRE-CLEANUP: Deep search for any existing local welds
-        for _, obj in ipairs(workspace:GetDescendants()) do
+        -- Start with a clean slate
+        for _, obj in ipairs(game:GetDescendants()) do
             if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
-                obj.Part0 = nil
-                obj.Part1 = nil
+                obj.Part0, obj.Part1 = nil, nil
                 obj:Destroy()
             end
         end
 
-        -- LOCAL WELD (ONLY TO DROPPED TOOLS IN WORKSPACE)
         for _, item in ipairs(workspace:GetChildren()) do
             if item:IsA("Tool") and item.Parent == workspace then
                 local handle = item:FindFirstChild("Handle")
                 if handle and handle:IsA("BasePart") and torso then
                     local weld = Instance.new("Weld", handle)
                     weld.Name = "AdminLocalWeld"
-                    weld.Part0 = torso
-                    weld.Part1 = handle
+                    weld.Part0, weld.Part1 = torso, handle
                     weld.C0 = CFrame.new(0, 0, 0)
                 end
             end
@@ -369,22 +366,31 @@ local function E(t, btn)
         local startTime = tick()
         SpamConnection = RS.Heartbeat:Connect(function()
             if CurrentTarget == t and thrp and thrp.Parent and hrp then
-                hrp.CFrame = thrp.CFrame -- Exact TP
+                hrp.CFrame = thrp.CFrame
                 
-                -- Cap at 0.5 seconds
                 if tick() - startTime >= 0.5 then
                     CurrentTarget = nil
                     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
                     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                     
-                    -- DEEP CLEANUP UNWELD
-                    for _, obj in ipairs(workspace:GetDescendants()) do
+                    -- NUKE CLEANUP
+                    hrp.CanCollide = false -- Stop collision logic briefly
+                    
+                    for _, obj in ipairs(game:GetDescendants()) do
                         if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
-                            obj.Part0 = nil
-                            obj.Part1 = nil
+                            local h = obj.Parent
+                            obj.Part0, obj.Part1 = nil, nil
                             obj:Destroy()
+                            if h and h:IsA("BasePart") then
+                                h:BreakJoints() -- Forces disconnection from you
+                                h.Velocity = Vector3.new(0,0,0)
+                            end
                         end
                     end
+                    
+                    task.wait(0.1)
+                    hrp.Velocity = Vector3.new(0,0,0)
+                    hrp.CanCollide = true
                 end
             else
                 if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
