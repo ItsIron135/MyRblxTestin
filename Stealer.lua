@@ -113,21 +113,21 @@ FLB.MouseButton1Click:Connect(function()
     end
 end)
 
--- SPAM SPAWN TOGGLE
-local SpamSpawnActive = false
-local SSB = Instance.new("TextButton", MF)
-SSB.Size = UDim2.new(1, 0, 0, 30)
-SSB.Position = UDim2.new(0, 0, 1, -180)
-SSB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-SSB.Text = "Spam Spawn: OFF"
-SSB.TextColor3 = Color3.new(1, 1, 1)
-SSB.Font = Enum.Font.Code
-SSB.TextSize = 14
+-- GIVE DROPPED GEAR TOGGLE
+local GiveDroppedGearActive = false
+local GDGB = Instance.new("TextButton", MF)
+GDGB.Size = UDim2.new(1, 0, 0, 30)
+GDGB.Position = UDim2.new(0, 0, 1, -180)
+GDGB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+GDGB.Text = "Give Dropped Gear: OFF"
+GDGB.TextColor3 = Color3.new(1, 1, 1)
+GDGB.Font = Enum.Font.Code
+GDGB.TextSize = 13
 
-SSB.MouseButton1Click:Connect(function()
-    SpamSpawnActive = not SpamSpawnActive
-    SSB.Text = SpamSpawnActive and "Spam Spawn: ON" or "Spam Spawn: OFF"
-    SSB.BackgroundColor3 = SpamSpawnActive and Color3.fromRGB(50, 50, 150) or Color3.fromRGB(60, 60, 60)
+GDGB.MouseButton1Click:Connect(function()
+    GiveDroppedGearActive = not GiveDroppedGearActive
+    GDGB.Text = GiveDroppedGearActive and "Give Dropped Gear: ON" or "Give Dropped Gear: OFF"
+    GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
 -- CLIENT KILL BUTTON
@@ -337,6 +337,57 @@ local function E(t, btn)
 
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
+    -- NEW GIVE DROPPED GEAR LOGIC
+    if GiveDroppedGearActive then
+        CurrentTarget = t
+        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
+        
+        -- Local Weld Dropped Gears
+        for _, item in ipairs(workspace:GetChildren()) do
+            if item:IsA("Tool") then
+                local handle = item:FindFirstChild("Handle")
+                if handle and handle:IsA("BasePart") and torso then
+                    local weld = Instance.new("Weld", handle)
+                    weld.Name = "AdminLocalWeld"
+                    weld.Part0 = torso
+                    weld.Part1 = handle
+                    weld.C0 = CFrame.new(0, 0, 0)
+                end
+            end
+        end
+
+        local startTime = tick()
+        SpamConnection = RS.Heartbeat:Connect(function()
+            if CurrentTarget == t and thrp and thrp.Parent and hrp then
+                hrp.CFrame = thrp.CFrame -- Exact TP
+                
+                -- Cap at 0.5 seconds
+                if tick() - startTime >= 0.5 then
+                    CurrentTarget = nil
+                    if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
+                    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                    
+                    -- CLEANUP UNWELD LOGIC
+                    for _, item in ipairs(workspace:GetChildren()) do
+                        if item:IsA("Tool") then
+                            local handle = item:FindFirstChild("Handle")
+                            if handle then
+                                local w = handle:FindFirstChild("AdminLocalWeld")
+                                if w then w:Destroy() end
+                            end
+                        end
+                    end
+                end
+            else
+                if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
+                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            end
+        end)
+        return
+    end
+
+    -- ORIGINAL CLONE LOGIC
     local bp = LP:WaitForChild("Backpack")
     local eS = bp:FindFirstChild("EnergySword") or c:FindFirstChild("EnergySword")
     local sS = nil
@@ -354,51 +405,34 @@ local function E(t, btn)
     local kd = sS:FindFirstChild("KeyDown")
     local originalCFrame = hrp.CFrame 
 
-    if SpamSpawnActive then
-        CurrentTarget = t
-        btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        
-        SpamConnection = RS.Heartbeat:Connect(function()
-            if CurrentTarget == t and thrp and thrp.Parent and hrp then
-                hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
-                if kd then kd:FireServer("r") end
-            else
-                if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
-                hrp.CFrame = originalCFrame
-                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            end
-        end)
-    else
-        UsedSwords[sS] = true
-        h:UnequipTools()
-        task.wait(0.05)
-        h:EquipTool(eS)
-        task.wait(0.05)
-        sS.Parent = c
+    UsedSwords[sS] = true
+    h:UnequipTools()
+    task.wait(0.05)
+    h:EquipTool(eS)
+    task.wait(0.05)
+    sS.Parent = c
 
-        local startTime = tick()
-        local endTime = startTime + 1
-        local lastSpam = 0
+    local startTime = tick()
+    local lastSpam = 0
 
-        local connection
-        connection = RS.Heartbeat:Connect(function()
-            local now = tick()
-            if now < endTime and hrp and thrp and thrp.Parent then
-                hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
-                
-                if now > (startTime + 0.2) then
-                    if now - lastSpam > 0.1 then
-                        if kd then kd:FireServer("r") end
-                        lastSpam = now
-                    end
+    local connection
+    connection = RS.Heartbeat:Connect(function()
+        local now = tick()
+        if (now - startTime) < 1 and hrp and thrp and thrp.Parent then
+            hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
+            
+            if now > (startTime + 0.2) then
+                if now - lastSpam > 0.1 then
+                    if kd then kd:FireServer("r") end
+                    lastSpam = now
                 end
-            else
-                connection:Disconnect()
-                if sS then sS.Name = "UsedSpectralSword" end
-                hrp.CFrame = originalCFrame
             end
-        end)
-    end
+        else
+            connection:Disconnect()
+            if sS then sS.Name = "UsedSpectralSword" end
+            hrp.CFrame = originalCFrame
+        end
+    end)
 end
 
 local function R()
