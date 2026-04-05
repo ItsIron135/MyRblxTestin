@@ -11,8 +11,8 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 200, 0, 500) -- Increased height for the new toggle
-MF.Position = UDim2.new(0.8, 0, 0.5, -250)
+MF.Size = UDim2.new(0, 200, 0, 420) -- Resized since spawn buttons are gone
+MF.Position = UDim2.new(0.8, 0, 0.5, -210)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -34,48 +34,10 @@ CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() SG:Destroy() end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -230) 
+SF.Size = UDim2.new(1, 0, 1, -150) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 Instance.new("UIListLayout", SF)
-
--- SPAWN LOCATION SYSTEM
-local UseSavedPos = false
-local SavedSpawnCFrame = nil
-
-local DB = Instance.new("TextButton", MF)
-DB.Size = UDim2.new(1, 0, 0, 40)
-DB.Position = UDim2.new(0, 0, 1, -200)
-DB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-DB.Text = "Custom Spawn: OFF"
-DB.TextColor3 = Color3.new(1, 1, 1)
-
-DB.MouseButton1Click:Connect(function()
-    if not SavedSpawnCFrame then 
-        DB.Text = "SET A POSITION FIRST!" 
-        task.wait(1) 
-    end
-    UseSavedPos = not UseSavedPos
-    DB.Text = UseSavedPos and "Custom Spawn: ON" or "Custom Spawn: OFF"
-    DB.BackgroundColor3 = UseSavedPos and Color3.fromRGB(50, 120, 50) or Color3.fromRGB(70, 70, 70)
-end)
-
-local SOB = Instance.new("TextButton", MF)
-SOB.Size = UDim2.new(1, 0, 0, 40)
-SOB.Position = UDim2.new(0, 0, 1, -160)
-SOB.BackgroundColor3 = Color3.fromRGB(50, 50, 100)
-SOB.Text = "Capture Current Spot"
-SOB.TextColor3 = Color3.new(1, 1, 1)
-
-SOB.MouseButton1Click:Connect(function()
-    local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        SavedSpawnCFrame = hrp.CFrame
-        SOB.Text = "SPOT CAPTURED!"
-        task.wait(1)
-        SOB.Text = "Capture Current Spot"
-    end
-end)
 
 -- INF STACK SYSTEM
 local IsStackingActive = false
@@ -92,7 +54,7 @@ STB.MouseButton1Click:Connect(function()
     STB.BackgroundColor3 = IsStackingActive and Color3.fromRGB(120, 50, 120) or Color3.fromRGB(70, 70, 70)
 end)
 
--- GIVE ALL BLOCKS SYSTEM (PHOTO LOGIC)
+-- GIVE ALL BLOCKS SYSTEM
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
 GAB.Size = UDim2.new(1, 0, 0, 40)
@@ -105,32 +67,6 @@ GAB.MouseButton1Click:Connect(function()
     GiveAllActive = not GiveAllActive
     GAB.Text = GiveAllActive and "Give All: ON" or "Give All: OFF"
     GAB.BackgroundColor3 = GiveAllActive and Color3.fromRGB(50, 100, 150) or Color3.fromRGB(70, 70, 70)
-end)
-
--- GLOBAL HEARTBEAT FOR STACKER AND BLOCK SPAM
-RS.Heartbeat:Connect(function()
-    -- Stacker
-    if IsStackingActive then
-        local bp = LP:FindFirstChild("Backpack")
-        local char = LP.Character
-        if bp and char then
-            for _, item in ipairs(bp:GetChildren()) do
-                if item.Name == "SpectralSword" then item.Parent = char end
-            end
-        end
-    end
-    
-    -- Give All (Photo Logic)
-    if GiveAllActive then
-        local BLOCKSPAM = 1 -- You can change this number to spam harder
-        for i = 1, BLOCKSPAM do
-            RP.SpawnRainbowBlock:FireServer()
-            RP.SpawnDiamondBlock:FireServer()
-            RP.SpawnSuperBlock:FireServer()
-            RP.SpawnLuckyBlock:FireServer()
-            RP.SpawnGalaxyBlock:FireServer()
-        end
-    end
 end)
 
 -- DROP ALL SYSTEM
@@ -157,6 +93,27 @@ DRB.MouseButton1Click:Connect(function()
     DRB.Text = "DROPPED!"
     task.wait(1)
     DRB.Text = "Drop All Spectrals"
+end)
+
+-- HEARTBEAT LOOP
+RS.Heartbeat:Connect(function()
+    if IsStackingActive then
+        local bp = LP:FindFirstChild("Backpack")
+        local char = LP.Character
+        if bp and char then
+            for _, item in ipairs(bp:GetChildren()) do
+                if item.Name == "SpectralSword" then item.Parent = char end
+            end
+        end
+    end
+    
+    if GiveAllActive then
+        RP.SpawnRainbowBlock:FireServer()
+        RP.SpawnDiamondBlock:FireServer()
+        RP.SpawnSuperBlock:FireServer()
+        RP.SpawnLuckyBlock:FireServer()
+        RP.SpawnGalaxyBlock:FireServer()
+    end
 end)
 
 local UsedSwords = {}
@@ -187,6 +144,8 @@ local function E(t)
     local kd = sS:FindFirstChild("KeyDown")
     UsedSwords[sS] = true
 
+    local originalCFrame = hrp.CFrame 
+
     h:UnequipTools()
     task.wait(0.05)
     h:EquipTool(eS)
@@ -194,28 +153,16 @@ local function E(t)
     sS.Parent = c
 
     local startTime = tick()
-    local endTime = startTime + 1
+    local endTime = startTime + 0.8
     local lastSpam = 0
-    local originalCFrame = hrp.CFrame 
 
     local connection
     connection = RS.Heartbeat:Connect(function()
         local now = tick()
         if now < endTime and hrp and thrp and thrp.Parent then
+            hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
             
-            local tpSpeed = 0.1 -- CHANGE TP SPEED HERE
-            
-            if UseSavedPos and SavedSpawnCFrame then
-                if (now - startTime) < tpSpeed then
-                    hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
-                else
-                    hrp.CFrame = SavedSpawnCFrame
-                end
-            else
-                hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
-            end
-            
-            if now > (startTime + 0.2) then
+            if now > (startTime + 0.1) then
                 if now - lastSpam > 0.1 then
                     if kd then kd:FireServer("r") end
                     lastSpam = now
