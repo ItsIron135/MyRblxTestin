@@ -11,8 +11,8 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 450) 
-MF.Position = UDim2.new(0.85, 0, 0.5, -225)
+MF.Size = UDim2.new(0, 180, 0, 300) 
+MF.Position = UDim2.new(0.85, 0, 0.5, -150)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -34,7 +34,7 @@ CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() SG:Destroy() end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -245) 
+SF.Size = UDim2.new(1, 0, 1, -215) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -57,12 +57,12 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
--- FLY SYSTEM
+-- MOBILE FRIENDLY FLY SYSTEM
 local Flying = false
 local FlySpeed = 100 
 local FLB = Instance.new("TextButton", MF)
 FLB.Size = UDim2.new(1, 0, 0, 30)
-FLB.Position = UDim2.new(0, 0, 1, -210)
+FLB.Position = UDim2.new(0, 0, 1, -180)
 FLB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FLB.Text = "Fly: OFF"
 FLB.TextColor3 = Color3.new(1, 1, 1)
@@ -76,7 +76,8 @@ FLB.MouseButton1Click:Connect(function()
     
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
     
     if Flying then
         local bv = Instance.new("BodyVelocity", root)
@@ -93,17 +94,25 @@ FLB.MouseButton1Click:Connect(function()
         task.spawn(function()
             while Flying and root and root.Parent do
                 local cam = workspace.CurrentCamera
-                local dir = Vector3.new(0, 0, 0)
+                -- Use MoveDirection for mobile joystick/WASD support
+                local dir = hum.MoveDirection 
                 
+                -- Check for vertical movement (Space/Mobile Jump)
                 local UIS = game:GetService("UserInputService")
-                if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector end
-                if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-                if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
-                if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
-                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then 
+                    dir = dir + Vector3.new(0, 1, 0) 
+                end
+                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then 
+                    dir = dir - Vector3.new(0, 1, 0) 
+                end
                 
-                bv.Velocity = dir.Unit ~= dir.Unit and Vector3.new(0, 0, 0) or dir.Unit * FlySpeed
+                -- Infinite Yield style logic: if not moving, hover. Else, move.
+                if dir.Magnitude > 0 then
+                    bv.Velocity = dir.Unit * FlySpeed
+                else
+                    bv.Velocity = Vector3.new(0, 0, 0)
+                end
+                
                 bg.CFrame = cam.CFrame
                 task.wait()
             end
@@ -117,7 +126,7 @@ end)
 local GiveDroppedGearActive = false
 local GDGB = Instance.new("TextButton", MF)
 GDGB.Size = UDim2.new(1, 0, 0, 30)
-GDGB.Position = UDim2.new(0, 0, 1, -180)
+GDGB.Position = UDim2.new(0, 0, 1, -150)
 GDGB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GDGB.Text = "Give Dropped Gear: OFF"
 GDGB.TextColor3 = Color3.new(1, 1, 1)
@@ -133,7 +142,7 @@ end)
 -- CLIENT KILL BUTTON
 local CKB = Instance.new("TextButton", MF)
 CKB.Size = UDim2.new(1, 0, 0, 30)
-CKB.Position = UDim2.new(0, 0, 1, -150)
+CKB.Position = UDim2.new(0, 0, 1, -120)
 CKB.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
 CKB.Text = "Client Kill"
 CKB.TextColor3 = Color3.new(1, 1, 1)
@@ -163,13 +172,13 @@ end)
 -- GHOST TOUCH SYSTEM
 local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
-GTB.Size = UDim2.new(1, 0, 0, 30)
-GTB.Position = UDim2.new(0, 0, 1, -120)
+GTB.Size = UDim2.new(1, 0, 0, 25)
+GTB.Position = UDim2.new(0, 0, 1, -95)
 GTB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GTB.Text = "Ghost Touch: OFF"
 GTB.TextColor3 = Color3.new(1, 1, 1)
 GTB.Font = Enum.Font.Code
-GTB.TextSize = 14
+GTB.TextSize = 13
 
 GTB.MouseButton1Click:Connect(function()
     GhostTouchActive = not GhostTouchActive
@@ -180,13 +189,13 @@ end)
 -- INF STACK SYSTEM
 local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
-STB.Size = UDim2.new(1, 0, 0, 30)
-STB.Position = UDim2.new(0, 0, 1, -90)
+STB.Size = UDim2.new(1, 0, 0, 25)
+STB.Position = UDim2.new(0, 0, 1, -70)
 STB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 STB.Text = "Inf Stack: OFF"
 STB.TextColor3 = Color3.new(1, 1, 1)
 STB.Font = Enum.Font.Code
-STB.TextSize = 14
+STB.TextSize = 13
 
 STB.MouseButton1Click:Connect(function()
     IsStackingActive = not IsStackingActive
@@ -211,13 +220,13 @@ end)
 -- GIVE ALL BLOCKS SYSTEM
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
-GAB.Size = UDim2.new(1, 0, 0, 30)
-GAB.Position = UDim2.new(0, 0, 1, -60)
+GAB.Size = UDim2.new(1, 0, 0, 25)
+GAB.Position = UDim2.new(0, 0, 1, -45)
 GAB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GAB.Text = "Give All: OFF"
 GAB.TextColor3 = Color3.new(1, 1, 1)
 GAB.Font = Enum.Font.Code
-GAB.TextSize = 14
+GAB.TextSize = 13
 
 GAB.MouseButton1Click:Connect(function()
     GiveAllActive = not GiveAllActive
@@ -228,13 +237,13 @@ end)
 -- GOD MODE TOGGLE
 local isGodMode = false
 local GDB = Instance.new("TextButton", MF)
-GDB.Size = UDim2.new(1, 0, 0, 30)
-GDB.Position = UDim2.new(0, 0, 1, -30)
+GDB.Size = UDim2.new(1, 0, 0, 20)
+GDB.Position = UDim2.new(0, 0, 1, -20)
 GDB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GDB.Text = "God Mode: OFF"
 GDB.TextColor3 = Color3.new(1, 1, 1)
 GDB.Font = Enum.Font.Code
-GDB.TextSize = 14
+GDB.TextSize = 12
 
 GDB.MouseButton1Click:Connect(function()
     isGodMode = not isGodMode
@@ -337,13 +346,11 @@ local function E(t, btn)
 
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
-    -- NUKE CLEANUP LOGIC FOR GIVE DROPPED GEAR
     if GiveDroppedGearActive then
         CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
         
-        -- Start with a clean slate
         for _, obj in ipairs(game:GetDescendants()) do
             if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
                 obj.Part0, obj.Part1 = nil, nil
@@ -373,17 +380,16 @@ local function E(t, btn)
                     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
                     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                     
-                    -- NUKE CLEANUP
-                    hrp.CanCollide = false -- Stop collision logic briefly
+                    hrp.CanCollide = false 
                     
                     for _, obj in ipairs(game:GetDescendants()) do
                         if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
-                            local h = obj.Parent
+                            local h_handle = obj.Parent
                             obj.Part0, obj.Part1 = nil, nil
                             obj:Destroy()
-                            if h and h:IsA("BasePart") then
-                                h:BreakJoints() -- Forces disconnection from you
-                                h.Velocity = Vector3.new(0,0,0)
+                            if h_handle and h_handle:IsA("BasePart") then
+                                h_handle:BreakJoints() 
+                                h_handle.Velocity = Vector3.new(0,0,0)
                             end
                         end
                     end
