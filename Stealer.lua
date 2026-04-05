@@ -260,9 +260,9 @@ task.spawn(function()
                 end 
                 if #swords > 0 then 
                     for _, s in pairs(swords) do s.Parent = char end 
-                    task.wait(0.02) 
+                    task.wait(0.01) 
                     for _, s in pairs(swords) do s.Parent = bp end 
-                    task.wait(0.02) 
+                    task.wait(0.01) 
                 end 
             end 
         end 
