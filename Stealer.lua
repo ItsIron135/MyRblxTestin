@@ -337,15 +337,24 @@ local function E(t, btn)
 
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
-    -- NEW GIVE DROPPED GEAR LOGIC
+    -- UPDATED GIVE DROPPED GEAR LOGIC WITH HARD RESET
     if GiveDroppedGearActive then
         CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
         
-        -- Local Weld Dropped Gears
+        -- PRE-CLEANUP: Deep search for any existing local welds
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
+                obj.Part0 = nil
+                obj.Part1 = nil
+                obj:Destroy()
+            end
+        end
+
+        -- LOCAL WELD (ONLY TO DROPPED TOOLS IN WORKSPACE)
         for _, item in ipairs(workspace:GetChildren()) do
-            if item:IsA("Tool") then
+            if item:IsA("Tool") and item.Parent == workspace then
                 local handle = item:FindFirstChild("Handle")
                 if handle and handle:IsA("BasePart") and torso then
                     local weld = Instance.new("Weld", handle)
@@ -368,14 +377,12 @@ local function E(t, btn)
                     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
                     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
                     
-                    -- CLEANUP UNWELD LOGIC
-                    for _, item in ipairs(workspace:GetChildren()) do
-                        if item:IsA("Tool") then
-                            local handle = item:FindFirstChild("Handle")
-                            if handle then
-                                local w = handle:FindFirstChild("AdminLocalWeld")
-                                if w then w:Destroy() end
-                            end
+                    -- DEEP CLEANUP UNWELD
+                    for _, obj in ipairs(workspace:GetDescendants()) do
+                        if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
+                            obj.Part0 = nil
+                            obj.Part1 = nil
+                            obj:Destroy()
                         end
                     end
                 end
