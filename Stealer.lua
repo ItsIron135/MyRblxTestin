@@ -347,6 +347,9 @@ local function E(t, btn)
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
     if GiveDroppedGearActive then
+        -- FEATURE: CAPTURE CURRENT LOCATION BEFORE TP
+        local originalPos = hrp.CFrame
+        
         CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
@@ -396,6 +399,8 @@ local function E(t, btn)
                     
                     task.wait(0.1)
                     hrp.Velocity = Vector3.new(0,0,0)
+                    -- FEATURE: TELEPORT BACK TO CAPTURED LOCATION
+                    hrp.CFrame = originalPos
                     hrp.CanCollide = true
                 end
             else
