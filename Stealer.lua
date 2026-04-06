@@ -11,8 +11,8 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 300) 
-MF.Position = UDim2.new(0.85, 0, 0.5, -150)
+MF.Size = UDim2.new(0, 180, 0, 360) -- Standardized height for clean button layout
+MF.Position = UDim2.new(0.85, 0, 0.5, -180)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -34,7 +34,7 @@ CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() SG:Destroy() end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -215) 
+SF.Size = UDim2.new(1, 0, 1, -280) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -62,7 +62,7 @@ local Flying = false
 local FlySpeed = 100 
 local FLB = Instance.new("TextButton", MF)
 FLB.Size = UDim2.new(1, 0, 0, 30)
-FLB.Position = UDim2.new(0, 0, 1, -180)
+FLB.Position = UDim2.new(0, 0, 1, -250)
 FLB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FLB.Text = "Fly: OFF"
 FLB.TextColor3 = Color3.new(1, 1, 1)
@@ -94,19 +94,11 @@ FLB.MouseButton1Click:Connect(function()
         task.spawn(function()
             while Flying and root and root.Parent do
                 local cam = workspace.CurrentCamera
-                -- Use MoveDirection for mobile joystick/WASD support
                 local dir = hum.MoveDirection 
-                
-                -- Check for vertical movement (Space/Mobile Jump)
                 local UIS = game:GetService("UserInputService")
-                if UIS:IsKeyDown(Enum.KeyCode.Space) then 
-                    dir = dir + Vector3.new(0, 1, 0) 
-                end
-                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then 
-                    dir = dir - Vector3.new(0, 1, 0) 
-                end
+                if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
+                if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
                 
-                -- Infinite Yield style logic: if not moving, hover. Else, move.
                 if dir.Magnitude > 0 then
                     bv.Velocity = dir.Unit * FlySpeed
                 else
@@ -126,7 +118,7 @@ end)
 local GiveDroppedGearActive = false
 local GDGB = Instance.new("TextButton", MF)
 GDGB.Size = UDim2.new(1, 0, 0, 30)
-GDGB.Position = UDim2.new(0, 0, 1, -150)
+GDGB.Position = UDim2.new(0, 0, 1, -220)
 GDGB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GDGB.Text = "Give Dropped Gear: OFF"
 GDGB.TextColor3 = Color3.new(1, 1, 1)
@@ -139,15 +131,16 @@ GDGB.MouseButton1Click:Connect(function()
     GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
--- CLIENT KILL BUTTON
+-- CLIENT KILL BUTTON (CENTERED TEXT)
 local CKB = Instance.new("TextButton", MF)
 CKB.Size = UDim2.new(1, 0, 0, 30)
-CKB.Position = UDim2.new(0, 0, 1, -120)
+CKB.Position = UDim2.new(0, 0, 1, -190)
 CKB.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
 CKB.Text = "Client Kill"
 CKB.TextColor3 = Color3.new(1, 1, 1)
 CKB.Font = Enum.Font.Code
 CKB.TextSize = 14
+CKB.TextXAlignment = Enum.TextXAlignment.Center -- Ensures centering
 
 CKB.MouseButton1Click:Connect(function()
     local target = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
@@ -172,8 +165,8 @@ end)
 -- GHOST TOUCH SYSTEM
 local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
-GTB.Size = UDim2.new(1, 0, 0, 25)
-GTB.Position = UDim2.new(0, 0, 1, -95)
+GTB.Size = UDim2.new(1, 0, 0, 30)
+GTB.Position = UDim2.new(0, 0, 1, -160)
 GTB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GTB.Text = "Ghost Touch: OFF"
 GTB.TextColor3 = Color3.new(1, 1, 1)
@@ -189,8 +182,8 @@ end)
 -- INF STACK SYSTEM
 local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
-STB.Size = UDim2.new(1, 0, 0, 25)
-STB.Position = UDim2.new(0, 0, 1, -70)
+STB.Size = UDim2.new(1, 0, 0, 30)
+STB.Position = UDim2.new(0, 0, 1, -130)
 STB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 STB.Text = "Inf Stack: OFF"
 STB.TextColor3 = Color3.new(1, 1, 1)
@@ -220,8 +213,8 @@ end)
 -- GIVE ALL BLOCKS SYSTEM
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
-GAB.Size = UDim2.new(1, 0, 0, 25)
-GAB.Position = UDim2.new(0, 0, 1, -45)
+GAB.Size = UDim2.new(1, 0, 0, 30)
+GAB.Position = UDim2.new(0, 0, 1, -100)
 GAB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GAB.Text = "Give All: OFF"
 GAB.TextColor3 = Color3.new(1, 1, 1)
@@ -237,8 +230,8 @@ end)
 -- GOD MODE TOGGLE
 local isGodMode = false
 local GDB = Instance.new("TextButton", MF)
-GDB.Size = UDim2.new(1, 0, 0, 20)
-GDB.Position = UDim2.new(0, 0, 1, -20)
+GDB.Size = UDim2.new(1, 0, 0, 35)
+GDB.Position = UDim2.new(0, 0, 1, -70)
 GDB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GDB.Text = "God Mode: OFF"
 GDB.TextColor3 = Color3.new(1, 1, 1)
@@ -251,14 +244,47 @@ GDB.MouseButton1Click:Connect(function()
     GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
 end)
 
+-- ANTI-LASER BUTTON (RESIZED & MOVED)
+local IsAntiLaser = false
+local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
+
+local ALB = Instance.new("TextButton", MF)
+ALB.Size = UDim2.new(1, 0, 0, 35) -- Resized to match God Mode / others
+ALB.Position = UDim2.new(0, 0, 1, -35)
+ALB.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ALB.Text = "ANTI-LASER: OFF"
+ALB.TextColor3 = Color3.new(1, 1, 1)
+ALB.Font = Enum.Font.Code
+ALB.TextSize = 13
+
+ALB.MouseButton1Click:Connect(function()
+    IsAntiLaser = not IsAntiLaser
+    ALB.Text = IsAntiLaser and "ANTI-LASER: ON" or "ANTI-LASER: OFF"
+    ALB.BackgroundColor3 = IsAntiLaser and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
+end)
+
+-- ANTI-LASER MONITOR
+workspace.ChildAdded:Connect(function(child)
+    if IsAntiLaser then
+        RS.Heartbeat:Wait()
+        if laserNames[child.Name] or child:IsA("SelectionPartLasso") then
+            if child:IsA("BasePart") then
+                child.CanTouch = false
+                child.CanCollide = false
+                child.Transparency = 1
+            end
+            child:Destroy()
+        end
+    end
+end)
+
 -- GOD MODE LOGIC
 task.spawn(function() 
     local swordName = "OverseerwrathSword"
-    local player = LP
     while true do 
         if isGodMode then 
-            local char = player.Character 
-            local bp = player:FindFirstChild("Backpack") 
+            local char = LP.Character 
+            local bp = LP:FindFirstChild("Backpack") 
             if char and bp then 
                 local swords = {} 
                 for _, t in pairs(char:GetChildren()) do 
@@ -288,9 +314,7 @@ RS.Heartbeat:Connect(function()
         local heldTool = char:FindFirstChildOfClass("Tool")
         if heldTool then
             for _, item in ipairs(bp:GetChildren()) do
-                if item.Name == heldTool.Name then 
-                    item.Parent = char 
-                end
+                if item.Name == heldTool.Name then item.Parent = char end
             end
         end
     end
@@ -336,7 +360,6 @@ local function E(t, btn)
     local thrp = tc and tc:FindFirstChild("HumanoidRootPart")
 
     if not c or not h or not hrp or not thrp then return end
-
     if CurrentTarget == t then
         CurrentTarget = nil
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -347,9 +370,7 @@ local function E(t, btn)
     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
 
     if GiveDroppedGearActive then
-        -- FEATURE: CAPTURE CURRENT LOCATION BEFORE TP
         local originalPos = hrp.CFrame
-        
         CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
@@ -377,14 +398,11 @@ local function E(t, btn)
         SpamConnection = RS.Heartbeat:Connect(function()
             if CurrentTarget == t and thrp and thrp.Parent and hrp then
                 hrp.CFrame = thrp.CFrame
-                
                 if tick() - startTime >= 0.5 then
                     CurrentTarget = nil
                     if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
                     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                    
                     hrp.CanCollide = false 
-                    
                     for _, obj in ipairs(game:GetDescendants()) do
                         if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
                             local h_handle = obj.Parent
@@ -396,10 +414,8 @@ local function E(t, btn)
                             end
                         end
                     end
-                    
                     task.wait(0.1)
                     hrp.Velocity = Vector3.new(0,0,0)
-                    -- FEATURE: TELEPORT BACK TO CAPTURED LOCATION
                     hrp.CFrame = originalPos
                     hrp.CanCollide = true
                 end
@@ -411,17 +427,14 @@ local function E(t, btn)
         return
     end
 
-    -- ORIGINAL CLONE LOGIC
     local bp = LP:WaitForChild("Backpack")
     local eS = bp:FindFirstChild("EnergySword") or c:FindFirstChild("EnergySword")
     local sS = nil
-    
     local items = bp:GetChildren()
     for _, v in pairs(c:GetChildren()) do table.insert(items, v) end
     for _, item in pairs(items) do 
         if item.Name == "SpectralSword" and not UsedSwords[item] then 
-            sS = item 
-            break 
+            sS = item; break 
         end 
     end
 
@@ -438,18 +451,14 @@ local function E(t, btn)
 
     local startTime = tick()
     local lastSpam = 0
-
     local connection
     connection = RS.Heartbeat:Connect(function()
         local now = tick()
         if (now - startTime) < 1 and hrp and thrp and thrp.Parent then
             hrp.CFrame = thrp.CFrame * CFrame.new(0, 0, 4) * CFrame.Angles(0, math.pi, 0)
-            
-            if now > (startTime + 0.2) then
-                if now - lastSpam > 0.1 then
-                    if kd then kd:FireServer("r") end
-                    lastSpam = now
-                end
+            if now > (startTime + 0.2) and now - lastSpam > 0.1 then
+                if kd then kd:FireServer("r") end
+                lastSpam = now
             end
         else
             connection:Disconnect()
