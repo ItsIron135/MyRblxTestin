@@ -246,7 +246,7 @@ end)
 
 -- ANTI-LASER BUTTON (RESIZED & MOVED)
 local IsAntiLaser = false
-local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
+local laserNames = {["Rain"] = true, ["Beam"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true}
 
 local ALB = Instance.new("TextButton", MF)
 ALB.Size = UDim2.new(1, 0, 0, 35) -- Resized to match God Mode / others
