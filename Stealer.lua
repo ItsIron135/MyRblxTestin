@@ -348,10 +348,45 @@ RS.Heartbeat:Connect(function()
     end
 end)
 
-local UsedSwords = {}
-local CurrentTarget = nil
-local SpamConnection = nil
+-- HIGH-SPEED NO-TP GIVE LOGIC
+local function fastNoTPGive(targetPlayer)
+    local tc = targetPlayer.Character
+    local thrp = tc and (tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Torso"))
+    if not thrp then return end
 
+    local gears = {}
+    for _, item in ipairs(workspace:GetChildren()) do
+        if item:IsA("Tool") then
+            local handle = item:FindFirstChild("Handle")
+            if handle and handle:IsA("BasePart") then
+                handle.Anchored = true
+                handle.CFrame = thrp.CFrame
+                table.insert(gears, handle)
+            end
+        end
+    end
+
+    -- Fast Loop: Snaps gears and fires touch every frame for 1 second
+    task.spawn(function()
+        local start = tick()
+        while tick() - start < 1 do
+            for _, h in ipairs(gears) do
+                if h and h.Parent then
+                    h.CFrame = thrp.CFrame
+                    firetouchinterest(thrp, h, 0)
+                    firetouchinterest(thrp, h, 1)
+                end
+            end
+            RS.Heartbeat:Wait()
+        end
+        -- Release gears that weren't picked up
+        for _, h in ipairs(gears) do
+            if h and h.Parent then h.Anchored = false end
+        end
+    end)
+end
+
+local UsedSwords = {}
 local function E(t, btn)
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
@@ -360,70 +395,13 @@ local function E(t, btn)
     local thrp = tc and tc:FindFirstChild("HumanoidRootPart")
 
     if not c or not h or not hrp or not thrp then return end
-    if CurrentTarget == t then
-        CurrentTarget = nil
-        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
-        return
-    end
 
-    if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
-
+    -- NEW FAST NO-TP LOGIC INTEGRATION
     if GiveDroppedGearActive then
-        local originalPos = hrp.CFrame
-        CurrentTarget = t
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        local torso = c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso")
-        
-        for _, obj in ipairs(game:GetDescendants()) do
-            if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
-                obj.Part0, obj.Part1 = nil, nil
-                obj:Destroy()
-            end
-        end
-
-        for _, item in ipairs(workspace:GetChildren()) do
-            if item:IsA("Tool") and item.Parent == workspace then
-                local handle = item:FindFirstChild("Handle")
-                if handle and handle:IsA("BasePart") and torso then
-                    local weld = Instance.new("Weld", handle)
-                    weld.Name = "AdminLocalWeld"
-                    weld.Part0, weld.Part1 = torso, handle
-                    weld.C0 = CFrame.new(0, 0, 0)
-                end
-            end
-        end
-
-        local startTime = tick()
-        SpamConnection = RS.Heartbeat:Connect(function()
-            if CurrentTarget == t and thrp and thrp.Parent and hrp then
-                hrp.CFrame = thrp.CFrame
-                if tick() - startTime >= 0.5 then
-                    CurrentTarget = nil
-                    if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
-                    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                    hrp.CanCollide = false 
-                    for _, obj in ipairs(game:GetDescendants()) do
-                        if obj.Name == "AdminLocalWeld" and obj:IsA("Weld") then
-                            local h_handle = obj.Parent
-                            obj.Part0, obj.Part1 = nil, nil
-                            obj:Destroy()
-                            if h_handle and h_handle:IsA("BasePart") then
-                                h_handle:BreakJoints() 
-                                h_handle.Velocity = Vector3.new(0,0,0)
-                            end
-                        end
-                    end
-                    task.wait(0.1)
-                    hrp.Velocity = Vector3.new(0,0,0)
-                    hrp.CFrame = originalPos
-                    hrp.CanCollide = true
-                end
-            else
-                if SpamConnection then SpamConnection:Disconnect() SpamConnection = nil end
-                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-            end
-        end)
+        fastNoTPGive(t)
+        task.wait(0.5)
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         return
     end
 
