@@ -71,7 +71,7 @@ end
 local fireToggle = createBtn("FIRE: OFF", 30)
 local holdBtn = createBtn("MULTI HOLD", 60)
 
--- FLOATING Q BUTTON (Restored and Fixed)
+-- FLOATING Q BUTTON
 local mobileQ = Instance.new("TextButton", SG)
 mobileQ.Size = UDim2.new(0, 35, 0, 35) 
 mobileQ.Position = UDim2.new(Q_BUTTON_X_SCALE, Q_BUTTON_X_OFFSET, Q_BUTTON_Y_SCALE, Q_BUTTON_Y_OFFSET)
@@ -86,21 +86,19 @@ mobileQ.Visible = false
 mobileQ.ZIndex = 10
 Instance.new("UICorner", mobileQ).CornerRadius = UDim.new(1, 0)
 
--- 2. Q BUTTON LOGIC (SENDS Q TWICE)
+-- 2. Q BUTTON LOGIC (FIXED: Removed Backpack toggle glitch)
 mobileQ.MouseButton1Click:Connect(function()
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
-    task.wait(0.05)
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
-    task.wait(0.05)
+    -- First Q Press
     VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
     task.wait(0.05)
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
     
-    pcall(function()
-        game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
-        task.wait(0.1)
-        game.StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, true)
-    end)
+    task.wait(0.05) 
+    
+    -- Second Q Press
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+    task.wait(0.05)
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
 end)
 
 fireToggle.MouseButton1Click:Connect(function()
@@ -146,7 +144,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 5. SPAWN DROPDOWN (RENAMED BASES)
+-- 5. SPAWN DROPDOWN
 local SF = Instance.new("ScrollingFrame", MF)
 SF.Size = UDim2.new(1, 0, 1, -90) 
 SF.Position = UDim2.new(0, 0, 0, 90)
