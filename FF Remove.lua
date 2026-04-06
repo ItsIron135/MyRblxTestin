@@ -64,6 +64,7 @@ local function createBtn(text, yPos)
     return b
 end
 
+-- BUTTONS
 local alignBtn = createBtn("ALIGN", 30)
 local giveAllBtn = createBtn("GIVE ALL: OFF", 60)
 local fireToggle = createBtn("FIRE: OFF", 90)
@@ -91,6 +92,7 @@ mobileQ.MouseButton1Click:Connect(function()
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
 end)
 
+-- MANUAL ALIGN (Independent from bases)
 alignBtn.MouseButton1Click:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -101,6 +103,7 @@ alignBtn.MouseButton1Click:Connect(function()
         alignBtn.BackgroundColor3 = isCamActive and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(60, 60, 60)
         
         if isCamActive then
+            -- Independent Align: Move 40 studs back, rotate 90 right
             root.CFrame = root.CFrame * CFrame.new(0, 0, PUSH_BACK_DIST) * CFrame.Angles(0, math.rad(-90), 0)
         else
             camera.CameraType = Enum.CameraType.Custom
@@ -158,7 +161,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- 5. SPAWN DROPDOWN (FIXED SCROLLING & ADDED RED BASE)
+-- 5. SPAWN DROPDOWN
 local SF = Instance.new("ScrollingFrame", MF)
 SF.Size = UDim2.new(1, 0, 1, -150) 
 SF.Position = UDim2.new(0, 0, 0, 150)
@@ -169,21 +172,11 @@ SF.Active = true
 local UIList = Instance.new("UIListLayout", SF)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 
--- Automatically updates canvas size so RED BASE isn't hidden
 UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     SF.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
 end)
 
-local baseNames = {
-    "Dark Blue Base", 
-    "Light Blue Base", 
-    "Green Base", 
-    "Yellow Base", 
-    "Orange Base", 
-    "Pink Base", 
-    "Purple Base", 
-    "Red Base"
-}
+local baseNames = {"Dark Blue Base", "Light Blue Base", "Green Base", "Yellow Base", "Orange Base", "Pink Base", "Purple Base", "Red Base"}
 
 for i = 1, 8 do
     local sBtn = Instance.new("TextButton", SF)
@@ -198,8 +191,15 @@ for i = 1, 8 do
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         
+        -- Fix button color "layering"
+        if activeSpawnBtn and activeSpawnBtn ~= sBtn then
+            activeSpawnBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            activeSpawnBtn.TextColor3 = Color3.new(1, 1, 1)
+        end
+
         if activeSpawnBtn == sBtn then
             sBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            sBtn.TextColor3 = Color3.new(1, 1, 1)
             activeSpawnBtn = nil
             if TargetObject then TargetObject.Transparency = 1 end
             isCamActive = false
@@ -208,12 +208,13 @@ for i = 1, 8 do
             return
         end
         
-        if activeSpawnBtn then activeSpawnBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
         sBtn.BackgroundColor3 = Color3.new(1, 1, 1)
+        sBtn.TextColor3 = Color3.new(0, 0, 0)
         activeSpawnBtn = sBtn
         
         local spawnPath = workspace:FindFirstChild("Spawn"..i)
         if spawnPath and spawnPath:FindFirstChild("MagnitudeCheck") and root then
+            -- Automation Logic
             root.CFrame = CFrame.new(-1840.9, 301.1, 119.6)
             task.wait(0.1)
             TargetObject = spawnPath.MagnitudeCheck
@@ -221,12 +222,21 @@ for i = 1, 8 do
             TargetObject.Anchored = true
             TargetObject.CanCollide = false
             TargetObject.Size = Vector3.new(50, 50, 50)
+            TargetObject.Color = Color3.fromRGB(255, 0, 0) -- Visible Red
+            TargetObject.Transparency = 0.5
             TargetObject.CFrame = CFrame.new(root.Position.X, root.Position.Y + 25, root.Position.Z)
             
             local bp = player:FindFirstChild("Backpack")
             local bow = bp and bp:FindFirstChild("OrnateGoldenBow")
             if bow and hum then hum:EquipTool(bow) end
             
+            -- Automation specific alignment
+            local blockPos = TargetObject.Position
+            local edgePos = blockPos + Vector3.new(0, 0, PUSH_BACK_DIST + 25) 
+            edgePos = Vector3.new(edgePos.X, root.Position.Y, edgePos.Z)
+            local lookCFrame = CFrame.lookAt(edgePos, Vector3.new(blockPos.X, edgePos.Y, blockPos.Z))
+            root.CFrame = lookCFrame * CFrame.Angles(0, math.rad(-90), 0)
+
             isCamActive = true
             alignBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
         end
