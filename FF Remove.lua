@@ -7,16 +7,17 @@ local camera = workspace.CurrentCamera
 local pGui = player:WaitForChild("PlayerGui")
 
 -- CONFIG
-local UI_NAME = "FF_REMOVE_V22_FINAL"
+local UI_NAME = "FF_REMOVE_V23"
 local PUSH_BACK_DIST = 40 
 local CAM_OFFSET_DIST = 16  
-local OFFSET_DIST = 30 -- Unified 30-stud offset for everything
+local OFFSET_DIST = 30 
 local SAFE_COORDS = Vector3.new(-1840.9, 301.1, 119.6)
 
 local isCamActive = false
 local isFireToggled = false
 local isGiveAllActive = false
 local ActiveObjects = {} 
+local OriginalCFrames = {} -- NEW: Stores original positions
 local qTrackingUntil = 0 
 
 -- 1. UI SETUP
@@ -33,8 +34,8 @@ MF.Active = true; MF.Draggable = true; MF.BorderSizePixel = 0
 
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30); T.BackgroundTransparency = 1
-T.Text = "FF MOVE"; T.TextColor3 = Color3.new(1, 1, 1)
-T.Font = Enum.Font.Code; T.TextSize = 13
+T.Text = "FF REMOVE"; T.TextColor3 = Color3.new(1, 1, 1)
+T.Font = Enum.Font.Code; T.TextSize = 14
 
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30); CB.Position = UDim2.new(1, -30, 0, 0)
@@ -56,7 +57,7 @@ local fireToggle = createBtn("FIRE: OFF", 90)
 local holdBtn = createBtn("MULTI HOLD", 120)
 local outerFFBtn = createBtn("OUTER FF", 150, Color3.fromRGB(80, 40, 120))
 
--- MOBILE Q (200ms Calibrated)
+-- MOBILE Q (200ms Delay)
 local mobileQ = Instance.new("TextButton", SG)
 mobileQ.Size = UDim2.new(0, 35, 0, 35) 
 mobileQ.BackgroundColor3 = Color3.fromRGB(120, 120, 130); mobileQ.BackgroundTransparency = 0.4 
@@ -71,24 +72,30 @@ mobileQ.MouseButton1Click:Connect(function()
     VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
 end)
 
--- 2. UNIVERSAL TOGGLE (Unified Horizontal Offset)
+-- 2. UNIVERSAL TOGGLE (With Return-To-Home Logic)
 local function togglePart(part, button, isOuter)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root or not part then return end
 
     if ActiveObjects[part] then
-        -- TOGGLE OFF
+        -- TOGGLE OFF: Send it back to where it was
+        if OriginalCFrames[part] then
+            part.CFrame = OriginalCFrames[part]
+        end
         part.Transparency = 1
         part.CanQuery = false
         button.BackgroundColor3 = isOuter and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(50, 50, 50)
         ActiveObjects[part] = nil
     else
-        -- TOGGLE ON
+        -- TOGGLE ON: Save current spot then move to safe zone
+        if not OriginalCFrames[part] then
+            OriginalCFrames[part] = part.CFrame
+        end
+        
         ActiveObjects[part] = true
         button.BackgroundColor3 = isOuter and Color3.fromRGB(0, 150, 255) or Color3.new(0.2, 0.5, 0.8)
         
-        -- Setup Block
         part.Size = Vector3.new(50, 50, 50)
         part.Transparency = 0.5
         part.Color = Color3.fromRGB(255, 0, 0)
@@ -96,7 +103,6 @@ local function togglePart(part, button, isOuter)
         part.CanCollide = false
         part.CanQuery = true
 
-        -- Unified TP Logic: Part at Safe Coords, Player 30 studs back
         part.CFrame = CFrame.new(SAFE_COORDS)
         root.CFrame = CFrame.new(SAFE_COORDS + Vector3.new(0, 0, OFFSET_DIST))
         
@@ -158,7 +164,7 @@ outerFFBtn.MouseButton1Click:Connect(function()
     if OF_Panel.Visible then populateOuterMenu() end
 end)
 
--- 4. ALIGN & MAIN BASE SELECTOR
+-- 4. ALIGN & MAIN SELECTOR
 alignBtn.MouseButton1Click:Connect(function()
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
