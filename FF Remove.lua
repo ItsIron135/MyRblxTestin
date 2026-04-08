@@ -27,7 +27,7 @@ SG.Name = UI_NAME
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 300) -- Shrunk from 360 to 300 to remove blank space
+MF.Size = UDim2.new(0, 180, 0, 300) 
 MF.Position = UDim2.new(0.85, 0, 0.5, -150)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true; MF.Draggable = true; MF.BorderSizePixel = 0
@@ -143,7 +143,7 @@ giveAllBtn.MouseButton1Click:Connect(function()
     giveAllBtn.BackgroundColor3 = isGiveAllActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
--- 6. OUTER FF PANEL
+-- 6. OUTER FF PANEL (NOW INCLUDES TERRAIN FORCEFIELDS)
 local OF_Panel = Instance.new("Frame", SG)
 OF_Panel.Size = UDim2.new(0, 220, 0, 400); OF_Panel.Position = UDim2.new(0.85, -230, 0.5, -200)
 OF_Panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20); OF_Panel.Visible = false
@@ -162,6 +162,8 @@ local baseInfo = {
 
 local function populateOuterMenu()
     for _, child in ipairs(OF_Scroll:GetChildren()) do if not child:IsA("UIListLayout") then child:Destroy() end end
+    
+    -- SECTION 1: SPAWN WALLS
     local foundWalls = {}
     for _, v in ipairs(workspace:GetDescendants()) do
         if v.Name == "SpawnWalls" and v:IsA("BasePart") then
@@ -176,8 +178,9 @@ local function populateOuterMenu()
     for _, baseName in pairs(baseInfo) do
         if foundWalls[baseName] then
             local label = Instance.new("TextLabel", OF_Scroll)
-            label.Size = UDim2.new(1, 0, 0, 20); label.Text = "--- " .. baseName .. " ---"
+            label.Size = UDim2.new(1, 0, 0, 25); label.Text = "--- " .. baseName .. " ---"
             label.TextColor3 = Color3.fromRGB(0, 255, 150); label.BackgroundTransparency = 1
+            label.Font = Enum.Font.Code; label.TextSize = 13
             for i, wallPart in ipairs(foundWalls[baseName]) do
                 local wBtn = Instance.new("TextButton", OF_Scroll)
                 wBtn.Size = UDim2.new(1, 0, 0, 25); wBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
@@ -187,6 +190,33 @@ local function populateOuterMenu()
             end
         end
     end
+
+    -- SECTION 2: TERRAIN FORCEFIELDS
+    local ffLabel = Instance.new("TextLabel", OF_Scroll)
+    ffLabel.Size = UDim2.new(1, 0, 0, 30)
+    ffLabel.Text = "--- Terrain ForceFields ---"
+    ffLabel.TextColor3 = Color3.fromRGB(255, 150, 0)
+    ffLabel.BackgroundTransparency = 1
+    ffLabel.Font = Enum.Font.Code
+    ffLabel.TextSize = 13
+
+    for i = 1, 8 do
+        local terrainFolder = workspace:FindFirstChild("Terrain" .. i)
+        local forceFieldPart = terrainFolder and terrainFolder:FindFirstChild("ForceFields")
+        
+        if forceFieldPart then
+            local fBtn = Instance.new("TextButton", OF_Scroll)
+            fBtn.Size = UDim2.new(1, 0, 0, 25); fBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            fBtn.Text = "Terrain " .. i .. " FF"; fBtn.TextColor3 = Color3.new(1,1,1); fBtn.BorderSizePixel = 0
+            
+            if ActiveObjects[forceFieldPart] then fBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
+            
+            fBtn.MouseButton1Click:Connect(function() 
+                togglePart(forceFieldPart, fBtn, true) 
+            end)
+        end
+    end
+
     OF_Scroll.CanvasSize = UDim2.new(0,0,0, OF_List.AbsoluteContentSize.Y)
 end
 
