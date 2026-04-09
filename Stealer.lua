@@ -2,6 +2,8 @@ local P = game:GetService("Players")
 local LP = P.LocalPlayer
 local RS = game:GetService("RunService")
 local RP = game:GetService("ReplicatedStorage")
+local UIS = game:GetService("UserInputService")
+local cam = workspace.CurrentCamera
 local PG = LP:FindFirstChild("PlayerGui") or LP:WaitForChild("PlayerGui", 5)
 
 if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
@@ -11,7 +13,7 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 360) -- Standardized height for clean button layout
+MF.Size = UDim2.new(0, 180, 0, 360) 
 MF.Position = UDim2.new(0.85, 0, 0.5, -180)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
@@ -20,10 +22,18 @@ MF.Draggable = true
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30)
 T.BackgroundTransparency = 1
-T.Text = "Spawn Clone"
+T.Text = "Clone Spawner"
 T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
 T.TextSize = 16
+
+-- DESYNC VARIABLES
+local desyncActive = false
+local ghostOffset = Vector3.new(0, 0, 0)
+local flySpeed = 1.4
+local equipLerp = 0
+local animSpeed = 16
+local desyncLoop = nil
 
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30)
@@ -31,7 +41,13 @@ CB.Position = UDim2.new(1, -30, 0, 0)
 CB.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CB.Text = "X"
 CB.TextColor3 = Color3.new(1, 1, 1)
-CB.MouseButton1Click:Connect(function() SG:Destroy() end)
+CB.MouseButton1Click:Connect(function() 
+    if desyncActive then -- Cleanup if active
+        desyncActive = false
+        if desyncLoop then desyncLoop:Disconnect() end
+    end
+    SG:Destroy() 
+end)
 
 local SF = Instance.new("ScrollingFrame", MF)
 SF.Size = UDim2.new(1, 0, 1, -280) 
@@ -93,9 +109,7 @@ FLB.MouseButton1Click:Connect(function()
         
         task.spawn(function()
             while Flying and root and root.Parent do
-                local cam = workspace.CurrentCamera
                 local dir = hum.MoveDirection 
-                local UIS = game:GetService("UserInputService")
                 if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
                 if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
                 
@@ -131,34 +145,109 @@ GDGB.MouseButton1Click:Connect(function()
     GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
--- CLIENT KILL BUTTON (CENTERED TEXT)
-local CKB = Instance.new("TextButton", MF)
-CKB.Size = UDim2.new(1, 0, 0, 30)
-CKB.Position = UDim2.new(0, 0, 1, -190)
-CKB.BackgroundColor3 = Color3.fromRGB(100, 30, 30)
-CKB.Text = "Client Kill"
-CKB.TextColor3 = Color3.new(1, 1, 1)
-CKB.Font = Enum.Font.Code
-CKB.TextSize = 14
-CKB.TextXAlignment = Enum.TextXAlignment.Center -- Ensures centering
+-- PERM DESYNC BUTTON (REPLACES CLIENT KILL)
+local PDB = Instance.new("TextButton", MF)
+PDB.Size = UDim2.new(1, 0, 0, 30)
+PDB.Position = UDim2.new(0, 0, 1, -190)
+PDB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+PDB.Text = "Perm Desync: OFF"
+PDB.TextColor3 = Color3.new(1, 1, 1)
+PDB.Font = Enum.Font.Code
+PDB.TextSize = 14
 
-CKB.MouseButton1Click:Connect(function()
-    local target = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
-    local char = LP.Character
-    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+PDB.MouseButton1Click:Connect(function()
+    desyncActive = not desyncActive
+    PDB.Text = desyncActive and "Perm Desync: ON" or "Perm Desync: OFF"
+    PDB.BackgroundColor3 = desyncActive and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(60, 60, 60)
     
-    if target then
-        local cloneTorso = target:FindFirstChild("Torso") or target:FindFirstChild("HumanoidRootPart")
-        if cloneTorso and root then
-            cloneTorso.CFrame = root.CFrame * CFrame.new(0, 0, 7) * CFrame.Angles(0, math.rad(180), 0)
-            task.wait(0.1)
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    
+    if not char or not hum or not root then return end
+
+    if desyncActive then
+        ghostOffset = Vector3.new(0, 0, 0)
+        equipLerp = 0
+        hum.PlatformStand = true
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+        
+        local bv = Instance.new("BodyVelocity", root)
+        bv.Name = "GhostFreeze"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.new(0, 0, 0)
+        
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("Motor6D") then v.Enabled = false end
+            if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then 
+                v.Massless = true
+                v.CanCollide = false 
+            end
         end
-        target:BreakJoints()
-        local h = target:FindFirstChildOfClass("Humanoid")
-        if h then h.Health = 0 end
-        CKB.Text = "KILLED"
-        task.wait(1)
-        CKB.Text = "Client Kill"
+
+        desyncLoop = RS.Heartbeat:Connect(function(dt)
+            if not desyncActive then return end
+            
+            local lookCF = cam.CFrame
+            local moveDir = Vector3.new(0, 0, 0)
+            local isHoldingTool = char:FindFirstChildOfClass("Tool") ~= nil
+            
+            local target = isHoldingTool and 1 or 0
+            equipLerp = equipLerp + (target - equipLerp) * math.clamp(dt * animSpeed, 0, 1)
+
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += lookCF.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= lookCF.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= lookCF.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += lookCF.RightVector end
+            
+            if moveDir.Magnitude > 0 then
+                ghostOffset = ghostOffset + (moveDir.Unit * flySpeed)
+            end
+            
+            local basePos = root.Position + ghostOffset
+            local ghostRot = lookCF.Rotation
+            
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    local n = part.Name
+                    local pOffset = CFrame.new(0, 0, 0)
+                    
+                    if n:match("Right Arm") or n:match("RightUpperArm") or n:match("RightLowerArm") or n:match("RightHand") then
+                        local sidePose = CFrame.new(1.5, 0, 0)
+                        local gearPose = CFrame.new(1.5, 0.6, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
+                        pOffset = sidePose:Lerp(gearPose, equipLerp)
+                    elseif n:match("Left Arm") or n:match("LeftUpperArm") or n:match("LeftLowerArm") or n:match("LeftHand") then
+                        pOffset = CFrame.new(-1.5, 0, 0)
+                    elseif n:match("Leg") or n:match("Foot") then 
+                        pOffset = CFrame.new(n:find("Right") and 0.5 or -0.5, -2, 0)
+                    elseif n == "Head" then 
+                        pOffset = CFrame.new(0, 1.5, 0) 
+                    elseif n:find("Torso") then
+                        pOffset = CFrame.new(0, 0, 0)
+                    end
+                    
+                    part.CFrame = CFrame.new(basePos) * ghostRot * pOffset
+                    part.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                end
+            end
+            
+            local head = char:FindFirstChild("Head")
+            if head then
+                cam.CameraSubject = head
+                hum.CameraOffset = ghostRot:Inverse() * (basePos - root.Position)
+            end
+        end)
+    else
+        if desyncLoop then desyncLoop:Disconnect() end
+        if root:FindFirstChild("GhostFreeze") then root.GhostFreeze:Destroy() end
+        hum.CameraOffset = Vector3.new(0,0,0)
+        cam.CameraSubject = hum
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("Motor6D") then v.Enabled = true end
+            if v:IsA("BasePart") then v.Massless = false v.CanCollide = true end
+        end
+        hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+        hum.PlatformStand = false
     end
 end)
 
@@ -244,12 +333,12 @@ GDB.MouseButton1Click:Connect(function()
     GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
 end)
 
--- ANTI-LASER BUTTON (RESIZED & MOVED)
+-- ANTI-LASER BUTTON
 local IsAntiLaser = false
 local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
 
 local ALB = Instance.new("TextButton", MF)
-ALB.Size = UDim2.new(1, 0, 0, 35) -- Resized to match God Mode / others
+ALB.Size = UDim2.new(1, 0, 0, 35)
 ALB.Position = UDim2.new(0, 0, 1, -35)
 ALB.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 ALB.Text = "ANTI-LASER: OFF"
@@ -366,7 +455,6 @@ local function fastNoTPGive(targetPlayer)
         end
     end
 
-    -- Fast Loop: Snaps gears and fires touch every frame for 1 second
     task.spawn(function()
         local start = tick()
         while tick() - start < 1 do
@@ -379,7 +467,6 @@ local function fastNoTPGive(targetPlayer)
             end
             RS.Heartbeat:Wait()
         end
-        -- Release gears that weren't picked up
         for _, h in ipairs(gears) do
             if h and h.Parent then h.Anchored = false end
         end
@@ -396,7 +483,6 @@ local function E(t, btn)
 
     if not c or not h or not hrp or not thrp then return end
 
-    -- NEW FAST NO-TP LOGIC INTEGRATION
     if GiveDroppedGearActive then
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
         fastNoTPGive(t)
@@ -465,4 +551,3 @@ end
 R()
 P.PlayerAdded:Connect(R)
 P.PlayerRemoving:Connect(R)
-
