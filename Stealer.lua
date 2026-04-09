@@ -32,7 +32,7 @@ local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
 local flySpeed = 1.4
 local equipLerp = 0
-local animSpeed = 17
+local animSpeed = 18
 local desyncLoop = nil
 
 local CB = Instance.new("TextButton", MF)
