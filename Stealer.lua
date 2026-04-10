@@ -13,8 +13,8 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 360) 
-MF.Position = UDim2.new(0.85, 0, 0.5, -180)
+MF.Size = UDim2.new(0, 180, 0, 400) 
+MF.Position = UDim2.new(0.85, 0, 0.5, -200)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -22,18 +22,61 @@ MF.Draggable = true
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30)
 T.BackgroundTransparency = 1
-T.Text = "Clone Spawner"
+T.Text = "Clone Spawner +"
 T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
 T.TextSize = 16
 
--- DESYNC VARIABLES
+-- DESYNC VARIABLES (Original)
 local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
 local flySpeed = 1.4
 local equipLerp = 0
 local animSpeed = 18
 local desyncLoop = nil
+
+-- NEW: ROCKET VARIABLES
+local RocketSpamActive = false
+local RocketTargets = {}
+
+--------------------------------
+-- EDITED: CLOSE-QUARTERS DYNAMIC ROCKET LOOP
+--------------------------------
+task.spawn(function()
+    while true do
+        if RocketSpamActive then
+            local tool = LP.Backpack:FindFirstChild("RocketJumper") or (LP.Character and LP.Character:FindFirstChild("RocketJumper"))
+            if tool and tool:FindFirstChild("FireRocket") then
+                for targetPlayer, isActive in pairs(RocketTargets) do
+                    if isActive and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = targetPlayer.Character.HumanoidRootPart
+                        local vel = hrp.Velocity
+                        
+                        -- Target prediction (aims slightly ahead of them based on velocity)
+                        local targetPos = hrp.Position + (vel * 0.05)
+                        
+                        -- Calculate close-proximity spawn directions based on trajectory
+                        local spawnPos
+                        if vel.Magnitude > 1 then
+                            -- Moving: Spawn closely in front of their path (just 5 studs ahead) with very tight spread
+                            local randomSpread = Vector3.new(math.random(-3, 3), math.random(0, 4), math.random(-3, 3))
+                            spawnPos = targetPos + (vel.Unit * 5) + randomSpread
+                        else
+                            -- Standing still: Spawn tightly around their immediate body area
+                            local randomSpread = Vector3.new(math.random(-5, 5), math.random(1, 5), math.random(-5, 5))
+                            spawnPos = targetPos + randomSpread
+                        end
+                        
+                        tool.Enabled = true
+                        tool.FireRocket:FireServer(targetPos, spawnPos)
+                    end
+                end
+            end
+        end
+        -- Increased speed to 100ms (0.1)
+        task.wait(0.1)
+    end
+end)
 
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30)
@@ -50,7 +93,7 @@ CB.MouseButton1Click:Connect(function()
 end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -280) 
+SF.Size = UDim2.new(1, 0, 1, -310) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -244,10 +287,16 @@ PDB.MouseButton1Click:Connect(function()
         cam.CameraSubject = hum
         for _, v in pairs(char:GetDescendants()) do
             if v:IsA("Motor6D") then v.Enabled = true end
-            if v:IsA("BasePart") then v.Massless = false v.CanCollide = true end
+            if v:IsA("BasePart") then 
+                v.Massless = false 
+                if v.Name ~= "HumanoidRootPart" then v.CanCollide = true end
+                v.Anchored = false 
+            end
         end
+        if root then root.Anchored = false end
         hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
         hum.PlatformStand = false
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
     end
 end)
 
@@ -350,6 +399,30 @@ ALB.MouseButton1Click:Connect(function()
     IsAntiLaser = not IsAntiLaser
     ALB.Text = IsAntiLaser and "ANTI-LASER: ON" or "ANTI-LASER: OFF"
     ALB.BackgroundColor3 = IsAntiLaser and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
+end)
+
+--------------------------------
+-- ROCKET SPAM BUTTON
+--------------------------------
+local RSB = Instance.new("TextButton", MF)
+RSB.Size = UDim2.new(1, 0, 0, 30)
+RSB.Position = UDim2.new(0, 0, 1, 0)
+RSB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+RSB.Text = "Rocket Spam: OFF"
+RSB.TextColor3 = Color3.new(1, 1, 1)
+RSB.Font = Enum.Font.Code
+RSB.TextSize = 13
+
+RSB.MouseButton1Click:Connect(function()
+    RocketSpamActive = not RocketSpamActive
+    RSB.Text = RocketSpamActive and "Rocket Spam: ON" or "Rocket Spam: OFF"
+    RSB.BackgroundColor3 = RocketSpamActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(60, 60, 60)
+    if not RocketSpamActive then 
+        RocketTargets = {} 
+        for _, btn in pairs(SF:GetChildren()) do
+            if btn:IsA("TextButton") then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
+        end
+    end
 end)
 
 -- ANTI-LASER MONITOR
@@ -474,7 +547,24 @@ local function fastNoTPGive(targetPlayer)
 end
 
 local UsedSwords = {}
+
+--------------------------------
+-- EDITED: THE 'E' FUNCTION
+--------------------------------
 local function E(t, btn)
+    -- 1. Rocket Intercept
+    if RocketSpamActive then
+        if RocketTargets[t] then
+            RocketTargets[t] = nil
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        else
+            RocketTargets[t] = true
+            btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        end
+        return -- Stops the rest of the function (so no TP happens)
+    end
+
+    -- 2. Your Original Logic
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
