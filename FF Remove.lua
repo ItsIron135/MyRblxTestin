@@ -28,14 +28,14 @@ local SG = Instance.new("ScreenGui", pGui)
 SG.Name = UI_NAME; SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 385) -- Adjusted height to fit everything tight
+MF.Size = UDim2.new(0, 180, 0, 385) -- Adjusted height back to normal
 MF.Position = UDim2.new(0.85, 0, 0.5, -192)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true; MF.Draggable = true; MF.BorderSizePixel = 0
 
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30); T.BackgroundTransparency = 1
-T.Text = "FF REMOVE + MOVE"; T.TextColor3 = Color3.new(1, 1, 1)
+T.Text = "FF V7.7 (CLONE TAB)"; T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code; T.TextSize = 14
 
 local function cleanupScanner()
@@ -111,40 +111,49 @@ local function runMapMoveAutomation()
     camera.CameraType = Enum.CameraType.Custom
 end
 
--- 4. FF SELECTOR LOGIC
+-- 4. UPGRADED FF SELECTOR LOGIC (Handles Safe Restoring of Clones)
 local function togglePart(part, button, isOuter)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root or not part then return end
 
     if ActiveObjects[part] then
+        -- RETURN TO NORMAL
         if OriginalCFrames[part] then part.CFrame = OriginalCFrames[part] end
         if OriginalAppearance[part] then
             part.Size = OriginalAppearance[part].Size
             part.Transparency = OriginalAppearance[part].Transparency
             part.Color = OriginalAppearance[part].Color
+            part.Anchored = OriginalAppearance[part].Anchored
+            part.CanCollide = OriginalAppearance[part].CanCollide
+            part.CanQuery = OriginalAppearance[part].CanQuery
         else
             part.Transparency = 1
         end
-        part.CanQuery = false
-        part.CanCollide = true
+        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0) -- Physics Wakeup
         button.BackgroundColor3 = isOuter and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(50, 50, 50)
         ActiveObjects[part] = nil
     else
+        -- CAPTURE
         if not OriginalCFrames[part] then OriginalCFrames[part] = part.CFrame end
         if not OriginalAppearance[part] then
             OriginalAppearance[part] = {
-                Size = part.Size,
-                Transparency = part.Transparency,
-                Color = part.Color
+                Size = part.Size, Transparency = part.Transparency, Color = part.Color,
+                Anchored = part.Anchored, CanCollide = part.CanCollide, CanQuery = part.CanQuery
             }
         end
         ActiveObjects[part] = true
         button.BackgroundColor3 = isOuter and Color3.fromRGB(0, 150, 255) or Color3.new(0.2, 0.5, 0.8)
-        part.Size = Vector3.new(50, 50, 50); part.Transparency = 0.5
-        part.Color = Color3.fromRGB(255, 0, 0); part.Anchored = true
-        part.CanCollide = false; part.CanQuery = true
+        
+        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0) -- Physics Wakeup
+        part.Size = Vector3.new(50, 50, 50)
+        part.Transparency = 0.5
+        part.Color = Color3.fromRGB(255, 0, 0)
+        part.Anchored = true
+        part.CanCollide = false
+        part.CanQuery = true
         part.CFrame = CFrame.new(SAFE_COORDS)
+        
         root.CFrame = CFrame.new(SAFE_COORDS + Vector3.new(0, 0, OFFSET_DIST))
         task.wait(0.05)
         root.CFrame = CFrame.lookAt(root.Position, part.Position)
@@ -173,7 +182,7 @@ noclipBtn.MouseButton1Click:Connect(function()
     noclipBtn.BackgroundColor3 = isNoclip and Color3.fromRGB(150, 50, 150) or Color3.fromRGB(60, 60, 60)
 end)
 
--- 6. OUTER FF PANEL (LOGIC RETAINED FROM YOUR SNIPPET)
+-- 6. OUTER FF PANEL (NOW WITH CLONES TAB)
 local OF_Panel = Instance.new("Frame", SG)
 OF_Panel.Size = UDim2.new(0, 220, 0, 400); OF_Panel.Position = UDim2.new(0.85, -230, 0.5, -200)
 OF_Panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20); OF_Panel.Visible = false
@@ -194,6 +203,37 @@ local baseInfo = {
 local function populateOuterMenu()
     for _, child in ipairs(OF_Scroll:GetChildren()) do if not child:IsA("UIListLayout") then child:Destroy() end end
     
+    -- === NEW CLONES TAB ===
+    local cloneLabel = Instance.new("TextLabel", OF_Scroll)
+    cloneLabel.Size = UDim2.new(1, 0, 0, 30); cloneLabel.Text = "--- Spectral Clones ---"
+    cloneLabel.TextColor3 = Color3.fromRGB(255, 50, 50); cloneLabel.BackgroundTransparency = 1
+    cloneLabel.Font = Enum.Font.Code; cloneLabel.TextSize = 13
+
+    local expectedName = player.Name .. "'s Clone"
+    local cloneCount = 0
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name == expectedName then
+            local torso = v:FindFirstChild("Torso") or v:FindFirstChild("UpperTorso") or v:FindFirstChild("HumanoidRootPart")
+            if torso and torso:IsA("BasePart") then
+                cloneCount = cloneCount + 1
+                local cBtn = Instance.new("TextButton", OF_Scroll)
+                cBtn.Size = UDim2.new(1, 0, 0, 25); cBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+                cBtn.Text = "["..cloneCount.."] Clone Torso"; cBtn.TextColor3 = Color3.new(1,1,1); cBtn.BorderSizePixel = 0
+                if ActiveObjects[torso] then cBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
+                cBtn.MouseButton1Click:Connect(function() togglePart(torso, cBtn, true) end)
+            end
+        end
+    end
+
+    if cloneCount == 0 then
+        local noneLabel = Instance.new("TextLabel", OF_Scroll)
+        noneLabel.Size = UDim2.new(1, 0, 0, 20); noneLabel.Text = "No active clones found."
+        noneLabel.TextColor3 = Color3.fromRGB(150, 150, 150); noneLabel.BackgroundTransparency = 1
+        noneLabel.Font = Enum.Font.Code; noneLabel.TextSize = 11
+    end
+    -- =======================
+
     local foundWalls = {}
     for _, v in ipairs(workspace:GetDescendants()) do
         if v.Name == "SpawnWalls" and v:IsA("BasePart") then
@@ -315,7 +355,7 @@ scanMenuBtn.MouseButton1Click:Connect(function() ObjFrame.Visible = not ObjFrame
 
 -- 8. BASES LIST (RESIZED TO FIT 8 NAMES WITHOUT SCROLLING)
 local SF = Instance.new("Frame", MF)
-SF.Size = UDim2.new(1, 0, 0, 205); SF.Position = UDim2.new(0, 0, 0, 180)
+SF.Size = UDim2.new(1, 0, 0, 205); SF.Position = UDim2.new(0, 0, 0, 180) 
 SF.BackgroundTransparency = 1
 local UIListMain = Instance.new("UIListLayout", SF)
 
@@ -324,7 +364,7 @@ for i = 1, 8 do
     local sBtn = Instance.new("TextButton", SF)
     sBtn.Size = UDim2.new(1, 0, 0, 25); sBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     sBtn.Text = baseNames[i] .. " Base"; sBtn.TextColor3 = Color3.new(1, 1, 1); sBtn.BorderSizePixel = 0
-    sBtn.TextSize = 11 -- Smaller font to fit comfortably
+    sBtn.TextSize = 11
     sBtn.MouseButton1Click:Connect(function()
         local spawnPath = workspace:FindFirstChild("Spawn"..i)
         local magPart = spawnPath and spawnPath:FindFirstChild("MagnitudeCheck")
