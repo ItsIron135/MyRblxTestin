@@ -13,6 +13,8 @@ local PUSH_BACK_DIST = 45
 local CAM_OFFSET_DIST = 16  
 local OFFSET_DIST = 30 
 local SAFE_COORDS = Vector3.new(-1840.9, 301.1, 119.6)
+local CAPTURE_SIZE = Vector3.new(50, 50, 50) -- Size for Map Walls & Bases
+local CLONE_SIZE = Vector3.new(15, 15, 15)      -- Edit this for your Clones!
 
 local isCamActive = false
 local isFireMode = false
@@ -28,14 +30,14 @@ local SG = Instance.new("ScreenGui", pGui)
 SG.Name = UI_NAME; SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 385) -- Adjusted height back to normal
+MF.Size = UDim2.new(0, 180, 0, 385)
 MF.Position = UDim2.new(0.85, 0, 0.5, -192)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true; MF.Draggable = true; MF.BorderSizePixel = 0
 
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30); T.BackgroundTransparency = 1
-T.Text = "FF V7.7 (CLONE TAB)"; T.TextColor3 = Color3.new(1, 1, 1)
+T.Text = "FF V7.8 (RESIZED)"; T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code; T.TextSize = 14
 
 local function cleanupScanner()
@@ -111,8 +113,8 @@ local function runMapMoveAutomation()
     camera.CameraType = Enum.CameraType.Custom
 end
 
--- 4. UPGRADED FF SELECTOR LOGIC (Handles Safe Restoring of Clones)
-local function togglePart(part, button, isOuter)
+-- 4. UPGRADED FF SELECTOR LOGIC (Now accepts custom sizes)
+local function togglePart(part, button, isOuter, targetSize)
     local char = player.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     if not root or not part then return end
@@ -130,7 +132,7 @@ local function togglePart(part, button, isOuter)
         else
             part.Transparency = 1
         end
-        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0) -- Physics Wakeup
+        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0)
         button.BackgroundColor3 = isOuter and Color3.fromRGB(45, 45, 45) or Color3.fromRGB(50, 50, 50)
         ActiveObjects[part] = nil
     else
@@ -145,8 +147,8 @@ local function togglePart(part, button, isOuter)
         ActiveObjects[part] = true
         button.BackgroundColor3 = isOuter and Color3.fromRGB(0, 150, 255) or Color3.new(0.2, 0.5, 0.8)
         
-        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0) -- Physics Wakeup
-        part.Size = Vector3.new(50, 50, 50)
+        part.AssemblyLinearVelocity = Vector3.new(0, 0.1, 0) 
+        part.Size = targetSize or CAPTURE_SIZE -- Defaults to 50x50x50 unless specified
         part.Transparency = 0.5
         part.Color = Color3.fromRGB(255, 0, 0)
         part.Anchored = true
@@ -182,7 +184,7 @@ noclipBtn.MouseButton1Click:Connect(function()
     noclipBtn.BackgroundColor3 = isNoclip and Color3.fromRGB(150, 50, 150) or Color3.fromRGB(60, 60, 60)
 end)
 
--- 6. OUTER FF PANEL (NOW WITH CLONES TAB)
+-- 6. OUTER FF PANEL (WITH CLONES TAB)
 local OF_Panel = Instance.new("Frame", SG)
 OF_Panel.Size = UDim2.new(0, 220, 0, 400); OF_Panel.Position = UDim2.new(0.85, -230, 0.5, -200)
 OF_Panel.BackgroundColor3 = Color3.fromRGB(20, 20, 20); OF_Panel.Visible = false
@@ -203,7 +205,7 @@ local baseInfo = {
 local function populateOuterMenu()
     for _, child in ipairs(OF_Scroll:GetChildren()) do if not child:IsA("UIListLayout") then child:Destroy() end end
     
-    -- === NEW CLONES TAB ===
+    -- === CLONES TAB ===
     local cloneLabel = Instance.new("TextLabel", OF_Scroll)
     cloneLabel.Size = UDim2.new(1, 0, 0, 30); cloneLabel.Text = "--- Spectral Clones ---"
     cloneLabel.TextColor3 = Color3.fromRGB(255, 50, 50); cloneLabel.BackgroundTransparency = 1
@@ -221,7 +223,9 @@ local function populateOuterMenu()
                 cBtn.Size = UDim2.new(1, 0, 0, 25); cBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
                 cBtn.Text = "["..cloneCount.."] Clone Torso"; cBtn.TextColor3 = Color3.new(1,1,1); cBtn.BorderSizePixel = 0
                 if ActiveObjects[torso] then cBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
-                cBtn.MouseButton1Click:Connect(function() togglePart(torso, cBtn, true) end)
+                
+                -- We pass CLONE_SIZE here so it doesn't use the massive default box
+                cBtn.MouseButton1Click:Connect(function() togglePart(torso, cBtn, true, CLONE_SIZE) end)
             end
         end
     end
@@ -256,7 +260,7 @@ local function populateOuterMenu()
                 wBtn.Size = UDim2.new(1, 0, 0, 25); wBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
                 wBtn.Text = "Wall " .. i; wBtn.TextColor3 = Color3.new(1,1,1); wBtn.BorderSizePixel = 0
                 if ActiveObjects[wallPart] then wBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
-                wBtn.MouseButton1Click:Connect(function() togglePart(wallPart, wBtn, true) end)
+                wBtn.MouseButton1Click:Connect(function() togglePart(wallPart, wBtn, true, CAPTURE_SIZE) end)
             end
         end
     end
@@ -274,7 +278,7 @@ local function populateOuterMenu()
             fBtn.Size = UDim2.new(1, 0, 0, 25); fBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
             fBtn.Text = "["..i.."] Terrain FF"; fBtn.TextColor3 = Color3.new(1,1,1); fBtn.BorderSizePixel = 0
             if ActiveObjects[forceFieldPart] then fBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
-            fBtn.MouseButton1Click:Connect(function() togglePart(forceFieldPart, fBtn, true) end)
+            fBtn.MouseButton1Click:Connect(function() togglePart(forceFieldPart, fBtn, true, CAPTURE_SIZE) end)
         end
     end
 
@@ -291,7 +295,7 @@ local function populateOuterMenu()
             lBtn.Size = UDim2.new(1, 0, 0, 25); lBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
             lBtn.Text = "["..i.."] SpawnLocation"; lBtn.TextColor3 = Color3.new(1,1,1); lBtn.BorderSizePixel = 0
             if ActiveObjects[locPart] then lBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
-            lBtn.MouseButton1Click:Connect(function() togglePart(locPart, lBtn, true) end)
+            lBtn.MouseButton1Click:Connect(function() togglePart(locPart, lBtn, true, CAPTURE_SIZE) end)
         end
     end
 
@@ -342,9 +346,9 @@ ScanBtnAction.MouseButton1Click:Connect(function()
             local backB = Instance.new("TextButton", row)
             backB.Size = UDim2.new(0.25,0,0.8,0); backB.Position = UDim2.new(0.7,0,0.1,0); backB.Text = "BACK"; backB.BackgroundColor3 = Color3.fromRGB(150,20,20); backB.TextColor3 = Color3.new(1,1,1)
             
-            tpB.MouseButton1Click:Connect(function() togglePart(p, tpB, false) end)
+            tpB.MouseButton1Click:Connect(function() togglePart(p, tpB, false, CAPTURE_SIZE) end)
             backB.MouseButton1Click:Connect(function()
-                if ActiveObjects[p] then togglePart(p, tpB, false) end
+                if ActiveObjects[p] then togglePart(p, tpB, false, CAPTURE_SIZE) end
             end)
         end
     end
@@ -353,7 +357,7 @@ end)
 
 scanMenuBtn.MouseButton1Click:Connect(function() ObjFrame.Visible = not ObjFrame.Visible; if not ObjFrame.Visible then cleanupScanner() end end)
 
--- 8. BASES LIST (RESIZED TO FIT 8 NAMES WITHOUT SCROLLING)
+-- 8. BASES LIST
 local SF = Instance.new("Frame", MF)
 SF.Size = UDim2.new(1, 0, 0, 205); SF.Position = UDim2.new(0, 0, 0, 180) 
 SF.BackgroundTransparency = 1
@@ -368,7 +372,7 @@ for i = 1, 8 do
     sBtn.MouseButton1Click:Connect(function()
         local spawnPath = workspace:FindFirstChild("Spawn"..i)
         local magPart = spawnPath and spawnPath:FindFirstChild("MagnitudeCheck")
-        if magPart then togglePart(magPart, sBtn, false) end
+        if magPart then togglePart(magPart, sBtn, false, CAPTURE_SIZE) end
     end)
 end
 
