@@ -27,7 +27,7 @@ T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
 T.TextSize = 16
 
--- DESYNC VARIABLES (Original)
+-- DESYNC VARIABLES
 local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
 local flySpeed = 1.4
@@ -40,7 +40,7 @@ local RocketSpamActive = false
 local RocketTargets = {}
 
 --------------------------------
--- EDITED: CLOSE-QUARTERS DYNAMIC ROCKET LOOP
+-- CLOSE-QUARTERS DYNAMIC ROCKET LOOP
 --------------------------------
 task.spawn(function()
     while true do
@@ -52,17 +52,12 @@ task.spawn(function()
                         local hrp = targetPlayer.Character.HumanoidRootPart
                         local vel = hrp.Velocity
                         
-                        -- Target prediction (aims slightly ahead of them based on velocity)
                         local targetPos = hrp.Position + (vel * 0.05)
-                        
-                        -- Calculate close-proximity spawn directions based on trajectory
                         local spawnPos
                         if vel.Magnitude > 1 then
-                            -- Moving: Spawn closely in front of their path (just 5 studs ahead) with very tight spread
                             local randomSpread = Vector3.new(math.random(-3, 3), math.random(0, 4), math.random(-3, 3))
                             spawnPos = targetPos + (vel.Unit * 5) + randomSpread
                         else
-                            -- Standing still: Spawn tightly around their immediate body area
                             local randomSpread = Vector3.new(math.random(-5, 5), math.random(1, 5), math.random(-5, 5))
                             spawnPos = targetPos + randomSpread
                         end
@@ -73,7 +68,6 @@ task.spawn(function()
                 end
             end
         end
-        -- Increased speed to 100ms (0.1)
         task.wait(0.1)
     end
 end)
@@ -85,7 +79,7 @@ CB.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CB.Text = "X"
 CB.TextColor3 = Color3.new(1, 1, 1)
 CB.MouseButton1Click:Connect(function() 
-    if desyncActive then -- Cleanup if active
+    if desyncActive then 
         desyncActive = false
         if desyncLoop then desyncLoop:Disconnect() end
     end
@@ -108,7 +102,6 @@ UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     SF.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
 end)
 
--- TRACKING THE LATEST CLONE
 local LatestClone = nil
 workspace.ChildAdded:Connect(function(child)
     if child.Name == LP.Name .. "'s Clone" then
@@ -116,7 +109,6 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
--- MOBILE FRIENDLY FLY SYSTEM
 local Flying = false
 local FlySpeed = 100 
 local FLB = Instance.new("TextButton", MF)
@@ -171,7 +163,6 @@ FLB.MouseButton1Click:Connect(function()
     end
 end)
 
--- GIVE DROPPED GEAR TOGGLE
 local GiveDroppedGearActive = false
 local GDGB = Instance.new("TextButton", MF)
 GDGB.Size = UDim2.new(1, 0, 0, 30)
@@ -188,7 +179,6 @@ GDGB.MouseButton1Click:Connect(function()
     GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
--- PERM DESYNC BUTTON (REPLACES CLIENT KILL)
 local PDB = Instance.new("TextButton", MF)
 PDB.Size = UDim2.new(1, 0, 0, 30)
 PDB.Position = UDim2.new(0, 0, 1, -190)
@@ -300,7 +290,6 @@ PDB.MouseButton1Click:Connect(function()
     end
 end)
 
--- GHOST TOUCH SYSTEM
 local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
 GTB.Size = UDim2.new(1, 0, 0, 30)
@@ -317,7 +306,6 @@ GTB.MouseButton1Click:Connect(function()
     GTB.BackgroundColor3 = GhostTouchActive and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
--- INF STACK SYSTEM
 local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
 STB.Size = UDim2.new(1, 0, 0, 30)
@@ -348,7 +336,6 @@ STB.MouseButton1Click:Connect(function()
     end
 end)
 
--- GIVE ALL BLOCKS SYSTEM
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
 GAB.Size = UDim2.new(1, 0, 0, 30)
@@ -365,7 +352,6 @@ GAB.MouseButton1Click:Connect(function()
     GAB.BackgroundColor3 = GiveAllActive and Color3.fromRGB(50, 100, 150) or Color3.fromRGB(70, 70, 70)
 end)
 
--- GOD MODE TOGGLE
 local isGodMode = false
 local GDB = Instance.new("TextButton", MF)
 GDB.Size = UDim2.new(1, 0, 0, 35)
@@ -382,7 +368,6 @@ GDB.MouseButton1Click:Connect(function()
     GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
 end)
 
--- ANTI-LASER BUTTON
 local IsAntiLaser = false
 local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
 
@@ -401,9 +386,6 @@ ALB.MouseButton1Click:Connect(function()
     ALB.BackgroundColor3 = IsAntiLaser and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
 end)
 
---------------------------------
--- ROCKET SPAM BUTTON
---------------------------------
 local RSB = Instance.new("TextButton", MF)
 RSB.Size = UDim2.new(1, 0, 0, 30)
 RSB.Position = UDim2.new(0, 0, 1, 0)
@@ -425,7 +407,6 @@ RSB.MouseButton1Click:Connect(function()
     end
 end)
 
--- ANTI-LASER MONITOR
 workspace.ChildAdded:Connect(function(child)
     if IsAntiLaser then
         RS.Heartbeat:Wait()
@@ -440,7 +421,6 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
--- GOD MODE LOGIC
 task.spawn(function() 
     local swordName = "OverseerwrathSword"
     while true do 
@@ -467,7 +447,6 @@ task.spawn(function()
     end 
 end)
 
--- GLOBAL HEARTBEAT
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local bp = LP:FindFirstChild("Backpack")
@@ -510,49 +489,79 @@ RS.Heartbeat:Connect(function()
     end
 end)
 
--- HIGH-SPEED NO-TP GIVE LOGIC
-local function fastNoTPGive(targetPlayer)
+--------------------------------
+-- NEW: WELD-TO-SELF & TP GIVE LOGIC (FIXED)
+--------------------------------
+local function consistentWeldTPGive(targetPlayer)
+    local char = LP.Character
+    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+    
     local tc = targetPlayer.Character
     local thrp = tc and (tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Torso"))
-    if not thrp then return end
+    
+    if not root or not thrp then return end
 
     local gears = {}
+    local welds = {}
+    local originalCFrame = root.CFrame
+
     for _, item in ipairs(workspace:GetChildren()) do
         if item:IsA("Tool") then
             local handle = item:FindFirstChild("Handle")
             if handle and handle:IsA("BasePart") then
-                handle.Anchored = true
-                handle.CFrame = thrp.CFrame
+                handle.Anchored = false 
+                handle.CFrame = root.CFrame
+                
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = root
+                weld.Part1 = handle
+                weld.Parent = root
+                
                 table.insert(gears, handle)
+                table.insert(welds, weld)
             end
         end
     end
 
+    if #gears == 0 then return end
+
     task.spawn(function()
         local start = tick()
         while tick() - start < 1 do
-            for _, h in ipairs(gears) do
-                if h and h.Parent then
-                    h.CFrame = thrp.CFrame
-                    firetouchinterest(thrp, h, 0)
-                    firetouchinterest(thrp, h, 1)
+            if root and thrp and thrp.Parent then
+                root.CFrame = thrp.CFrame
+                
+                for i = #gears, 1, -1 do
+                    local h = gears[i]
+                    local w = welds[i]
+                    local tool = h and h.Parent
+                    
+                    if tool and tool.Parent ~= workspace then
+                        if w then w:Destroy() end 
+                        table.remove(gears, i)
+                        table.remove(welds, i)
+                    elseif h and h.Parent then
+                        firetouchinterest(thrp, h, 0)
+                        firetouchinterest(thrp, h, 1)
+                    end
                 end
             end
             RS.Heartbeat:Wait()
         end
-        for _, h in ipairs(gears) do
-            if h and h.Parent then h.Anchored = false end
+        
+        for _, w in ipairs(welds) do
+            if w then w:Destroy() end
+        end
+        
+        if root then
+            root.CFrame = originalCFrame
         end
     end)
 end
 
 local UsedSwords = {}
 
---------------------------------
--- EDITED: THE 'E' FUNCTION
---------------------------------
 local function E(t, btn)
-    -- 1. Rocket Intercept
     if RocketSpamActive then
         if RocketTargets[t] then
             RocketTargets[t] = nil
@@ -561,10 +570,9 @@ local function E(t, btn)
             RocketTargets[t] = true
             btn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
         end
-        return -- Stops the rest of the function (so no TP happens)
+        return 
     end
 
-    -- 2. Your Original Logic
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -575,8 +583,8 @@ local function E(t, btn)
 
     if GiveDroppedGearActive then
         btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-        fastNoTPGive(t)
-        task.wait(0.5)
+        consistentWeldTPGive(t) 
+        task.wait(1.5) 
         btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         return
     end
