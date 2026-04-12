@@ -30,7 +30,7 @@ T.TextSize = 16
 -- DESYNC VARIABLES
 local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
-local flySpeed = 1.4
+local flySpeed = 1.8
 local equipLerp = 0
 local animSpeed = 18
 local desyncLoop = nil
@@ -68,7 +68,7 @@ task.spawn(function()
                 end
             end
         end
-        task.wait(0.1)
+        task.wait(0.02)
     end
 end)
 
