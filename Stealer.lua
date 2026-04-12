@@ -30,7 +30,7 @@ T.TextSize = 16
 -- DESYNC VARIABLES
 local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
-local flySpeed = 1.8
+local flySpeed = 2
 local equipLerp = 0
 local animSpeed = 18
 local desyncLoop = nil
