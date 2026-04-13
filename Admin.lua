@@ -12,7 +12,6 @@ local SG = Instance.new("ScreenGui", PG)
 SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
--- Narrowed to 240px and shortened to 400px to perfectly remove all excess space!
 local MF = Instance.new("Frame", SG)
 MF.Size = UDim2.new(0, 240, 0, 400) 
 MF.Position = UDim2.new(0.85, -120, 0.5, -200)
@@ -52,7 +51,7 @@ local AntiPickupActive = false
 local disabledParts = {}
 
 --------------------------------
--- CLOSE-QUARTERS DYNAMIC ROCKET LOOP
+-- CLOSE-QUARTERS DYNAMIC ROCKET LOOP (FIXED: UNCRASHABLE)
 --------------------------------
 task.spawn(function()
     while true do
@@ -74,8 +73,11 @@ task.spawn(function()
                             spawnPos = targetPos + randomSpread
                         end
                         
-                        tool.Enabled = true
-                        tool.FireRocket:FireServer(targetPos, spawnPos)
+                        -- pcall prevents the loop from breaking if the tool is suddenly deleted
+                        pcall(function()
+                            tool.Enabled = true
+                            tool.FireRocket:FireServer(targetPos, spawnPos)
+                        end)
                     end
                 end
             end
@@ -135,7 +137,7 @@ task.spawn(function()
                             task.spawn(function()
                                 gun.Parent = char
                                 task.wait(0.08) 
-                                gun:Activate()
+                                pcall(function() gun:Activate() end)
                                 task.wait(0.05) 
                                 gun.Parent = bp
                                 isShootingFood = false
@@ -234,7 +236,6 @@ CB.MouseButton1Click:Connect(function()
 end)
 
 local SF = Instance.new("ScrollingFrame", MF)
--- Perfectly sized so the Player List ends exactly where the buttons begin!
 SF.Size = UDim2.new(1, 0, 1, -300) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
@@ -258,7 +259,6 @@ end)
 
 -- =====================================
 -- COLUMN 1 (ORIGINAL BUTTONS)
--- Text sizes lowered to fit the sleek 120px button width
 -- =====================================
 local Flying = false
 local FlySpeed = 100 
@@ -839,7 +839,7 @@ local function E(t, btn)
         end 
     end
 
-    -- VISUAL DEBUGGER ADDED HERE
+    -- VISUAL DEBUGGER 
     if not eS or not sS then 
         local oldText = btn.Text
         btn.Text = "NO SWORDS!"
@@ -882,13 +882,23 @@ local function E(t, btn)
     end)
 end
 
+-- FIXED PLAYER LIST REFRESH VISUAL BUG!
 local function R()
     for _, item in pairs(SF:GetChildren()) do if item:IsA("TextButton") then item:Destroy() end end
     for _, p in pairs(P:GetPlayers()) do 
         if p ~= LP then
             local b = Instance.new("TextButton", SF)
             b.Size = UDim2.new(1, 0, 0, 25) 
-            b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            
+            -- Keep color if they are already an active target!
+            if RocketSpamActive and RocketTargets[p] then
+                b.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+            elseif AutoChudActive and AutoChudTargets[p] then
+                b.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            else
+                b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            end
+            
             b.Text = p.Name
             b.TextColor3 = Color3.new(1, 1, 1)
             b.Font = Enum.Font.Code
