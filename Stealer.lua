@@ -12,9 +12,10 @@ local SG = Instance.new("ScreenGui", PG)
 SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
+-- Narrowed to 240px and shortened to 400px to perfectly remove all excess space!
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 180, 0, 400) 
-MF.Position = UDim2.new(0.85, 0, 0.5, -200)
+MF.Size = UDim2.new(0, 240, 0, 400) 
+MF.Position = UDim2.new(0.85, -120, 0.5, -200)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
 MF.Draggable = true
@@ -22,10 +23,10 @@ MF.Draggable = true
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30)
 T.BackgroundTransparency = 1
-T.Text = "Clone Spawner +"
+T.Text = "Admin Panel"
 T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
-T.TextSize = 16
+T.TextSize = 14
 
 -- DESYNC VARIABLES
 local desyncActive = false
@@ -35,9 +36,20 @@ local equipLerp = 0
 local animSpeed = 18
 local desyncLoop = nil
 
--- NEW: ROCKET VARIABLES
+-- ROCKET VARIABLES
 local RocketSpamActive = false
 local RocketTargets = {}
+
+-- NEW VARIABLES
+local NoclipActive = false
+
+local AutoChudActive = false
+local AutoChudTargets = {}
+local isShootingFood = false
+
+local InfSupernovaActive = false
+local AntiPickupActive = false
+local disabledParts = {}
 
 --------------------------------
 -- CLOSE-QUARTERS DYNAMIC ROCKET LOOP
@@ -72,6 +84,139 @@ task.spawn(function()
     end
 end)
 
+--------------------------------
+-- AUTO CHUD LOGIC
+--------------------------------
+workspace.ChildAdded:Connect(function(child)
+    if AutoChudActive and (child.Name == "Burger" or child.Name == "Fries") then
+        local targetHRP = nil
+        for t, active in pairs(AutoChudTargets) do
+            if active and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+                targetHRP = t.Character.HumanoidRootPart
+                break
+            end
+        end
+        
+        if targetHRP then
+            local bv = child:WaitForChild("BodyVelocity", 0.5)
+            local bg = child:WaitForChild("BodyGyro", 0.5)
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            
+            child.CanCollide = false
+            child.CFrame = targetHRP.CFrame
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if AutoChudActive then
+            local hasTarget = false
+            for t, active in pairs(AutoChudTargets) do
+                if active and t.Character then hasTarget = true break end
+            end
+            
+            if hasTarget and not isShootingFood then
+                local bp = LP:FindFirstChild("Backpack")
+                local char = LP.Character
+                if bp and char then
+                    local guns = {}
+                    for _, item in pairs(bp:GetChildren()) do
+                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
+                    end
+                    for _, item in pairs(char:GetChildren()) do
+                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
+                    end
+                    for _, gun in ipairs(guns) do
+                        if gun.Enabled then
+                            isShootingFood = true
+                            task.spawn(function()
+                                gun.Parent = char
+                                task.wait(0.08) 
+                                gun:Activate()
+                                task.wait(0.05) 
+                                gun.Parent = bp
+                                isShootingFood = false
+                            end)
+                            break 
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+--------------------------------
+-- INF SUPERNOVA LOGIC
+--------------------------------
+task.spawn(function()
+    while true do
+        if InfSupernovaActive then 
+            local path = workspace:FindFirstChild("SingleRollDingle10")
+            if path then path = path:FindFirstChild("IvoryPeriastron") end
+            if path then path = path:FindFirstChild("Server") end
+            if path then path = path:FindFirstChild("StarSummon") end
+            if path then
+                for _, child in ipairs(path:GetChildren()) do
+                    if child.Name == "StarShard" or child.Name == "Explosion" then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+--------------------------------
+-- ANTI-PICKUP LOGIC
+--------------------------------
+local function restoreTools()
+    for _, part in ipairs(disabledParts) do
+        if part and part.Parent then 
+            part.CanTouch = true
+        end
+    end
+    disabledParts = {}
+end
+
+task.spawn(function()
+    while true do
+        if AntiPickupActive then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Tool") then
+                    for _, child in ipairs(obj:GetChildren()) do
+                        if child:IsA("BasePart") and child:FindFirstChildWhichIsA("TouchTransmitter") then
+                            if child.CanTouch == true then
+                                child.CanTouch = false
+                                table.insert(disabledParts, child)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+--------------------------------
+-- NOCLIP LOGIC
+--------------------------------
+RS.Stepped:Connect(function()
+    if NoclipActive and LP.Character then
+        for _, part in ipairs(LP.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
+
+
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30)
 CB.Position = UDim2.new(1, -30, 0, 0)
@@ -83,11 +228,14 @@ CB.MouseButton1Click:Connect(function()
         desyncActive = false
         if desyncLoop then desyncLoop:Disconnect() end
     end
+    AntiPickupActive = false
+    restoreTools()
     SG:Destroy() 
 end)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size = UDim2.new(1, 0, 1, -310) 
+-- Perfectly sized so the Player List ends exactly where the buttons begin!
+SF.Size = UDim2.new(1, 0, 1, -300) 
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -97,7 +245,6 @@ SF.Active = true
 
 local UIList = Instance.new("UIListLayout", SF)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
-
 UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     SF.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
 end)
@@ -109,16 +256,20 @@ workspace.ChildAdded:Connect(function(child)
     end
 end)
 
+-- =====================================
+-- COLUMN 1 (ORIGINAL BUTTONS)
+-- Text sizes lowered to fit the sleek 120px button width
+-- =====================================
 local Flying = false
 local FlySpeed = 100 
 local FLB = Instance.new("TextButton", MF)
-FLB.Size = UDim2.new(1, 0, 0, 30)
-FLB.Position = UDim2.new(0, 0, 1, -250)
+FLB.Size = UDim2.new(0.5, 0, 0, 30)
+FLB.Position = UDim2.new(0, 0, 1, -270)
 FLB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 FLB.Text = "Fly: OFF"
 FLB.TextColor3 = Color3.new(1, 1, 1)
 FLB.Font = Enum.Font.Code
-FLB.TextSize = 14
+FLB.TextSize = 11
 
 FLB.MouseButton1Click:Connect(function()
     Flying = not Flying
@@ -165,28 +316,28 @@ end)
 
 local GiveDroppedGearActive = false
 local GDGB = Instance.new("TextButton", MF)
-GDGB.Size = UDim2.new(1, 0, 0, 30)
-GDGB.Position = UDim2.new(0, 0, 1, -220)
+GDGB.Size = UDim2.new(0.5, 0, 0, 30)
+GDGB.Position = UDim2.new(0, 0, 1, -240)
 GDGB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-GDGB.Text = "Give Dropped Gear: OFF"
+GDGB.Text = "Give Gear: OFF"
 GDGB.TextColor3 = Color3.new(1, 1, 1)
 GDGB.Font = Enum.Font.Code
-GDGB.TextSize = 13
+GDGB.TextSize = 11
 
 GDGB.MouseButton1Click:Connect(function()
     GiveDroppedGearActive = not GiveDroppedGearActive
-    GDGB.Text = GiveDroppedGearActive and "Give Dropped Gear: ON" or "Give Dropped Gear: OFF"
+    GDGB.Text = GiveDroppedGearActive and "Give Gear: ON" or "Give Gear: OFF"
     GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
 end)
 
 local PDB = Instance.new("TextButton", MF)
-PDB.Size = UDim2.new(1, 0, 0, 30)
-PDB.Position = UDim2.new(0, 0, 1, -190)
+PDB.Size = UDim2.new(0.5, 0, 0, 30)
+PDB.Position = UDim2.new(0, 0, 1, -210)
 PDB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 PDB.Text = "Perm Desync: OFF"
 PDB.TextColor3 = Color3.new(1, 1, 1)
 PDB.Font = Enum.Font.Code
-PDB.TextSize = 14
+PDB.TextSize = 11
 
 PDB.MouseButton1Click:Connect(function()
     desyncActive = not desyncActive
@@ -292,13 +443,13 @@ end)
 
 local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
-GTB.Size = UDim2.new(1, 0, 0, 30)
-GTB.Position = UDim2.new(0, 0, 1, -160)
+GTB.Size = UDim2.new(0.5, 0, 0, 30)
+GTB.Position = UDim2.new(0, 0, 1, -180)
 GTB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 GTB.Text = "Ghost Touch: OFF"
 GTB.TextColor3 = Color3.new(1, 1, 1)
 GTB.Font = Enum.Font.Code
-GTB.TextSize = 13
+GTB.TextSize = 11
 
 GTB.MouseButton1Click:Connect(function()
     GhostTouchActive = not GhostTouchActive
@@ -308,13 +459,13 @@ end)
 
 local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
-STB.Size = UDim2.new(1, 0, 0, 30)
-STB.Position = UDim2.new(0, 0, 1, -130)
+STB.Size = UDim2.new(0.5, 0, 0, 30)
+STB.Position = UDim2.new(0, 0, 1, -150)
 STB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 STB.Text = "Inf Stack: OFF"
 STB.TextColor3 = Color3.new(1, 1, 1)
 STB.Font = Enum.Font.Code
-STB.TextSize = 13
+STB.TextSize = 11
 
 STB.MouseButton1Click:Connect(function()
     IsStackingActive = not IsStackingActive
@@ -338,13 +489,13 @@ end)
 
 local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
-GAB.Size = UDim2.new(1, 0, 0, 30)
-GAB.Position = UDim2.new(0, 0, 1, -100)
+GAB.Size = UDim2.new(0.5, 0, 0, 30)
+GAB.Position = UDim2.new(0, 0, 1, -120)
 GAB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GAB.Text = "Give All: OFF"
 GAB.TextColor3 = Color3.new(1, 1, 1)
 GAB.Font = Enum.Font.Code
-GAB.TextSize = 13
+GAB.TextSize = 11
 
 GAB.MouseButton1Click:Connect(function()
     GiveAllActive = not GiveAllActive
@@ -354,13 +505,13 @@ end)
 
 local isGodMode = false
 local GDB = Instance.new("TextButton", MF)
-GDB.Size = UDim2.new(1, 0, 0, 35)
-GDB.Position = UDim2.new(0, 0, 1, -70)
+GDB.Size = UDim2.new(0.5, 0, 0, 30) 
+GDB.Position = UDim2.new(0, 0, 1, -90)
 GDB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 GDB.Text = "God Mode: OFF"
 GDB.TextColor3 = Color3.new(1, 1, 1)
 GDB.Font = Enum.Font.Code
-GDB.TextSize = 12
+GDB.TextSize = 11
 
 GDB.MouseButton1Click:Connect(function()
     isGodMode = not isGodMode
@@ -372,13 +523,13 @@ local IsAntiLaser = false
 local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
 
 local ALB = Instance.new("TextButton", MF)
-ALB.Size = UDim2.new(1, 0, 0, 35)
-ALB.Position = UDim2.new(0, 0, 1, -35)
+ALB.Size = UDim2.new(0.5, 0, 0, 30) 
+ALB.Position = UDim2.new(0, 0, 1, -60)
 ALB.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 ALB.Text = "ANTI-LASER: OFF"
 ALB.TextColor3 = Color3.new(1, 1, 1)
 ALB.Font = Enum.Font.Code
-ALB.TextSize = 13
+ALB.TextSize = 11
 
 ALB.MouseButton1Click:Connect(function()
     IsAntiLaser = not IsAntiLaser
@@ -387,17 +538,17 @@ ALB.MouseButton1Click:Connect(function()
 end)
 
 local RSB = Instance.new("TextButton", MF)
-RSB.Size = UDim2.new(1, 0, 0, 30)
-RSB.Position = UDim2.new(0, 0, 1, 0)
+RSB.Size = UDim2.new(0.5, 0, 0, 30)
+RSB.Position = UDim2.new(0, 0, 1, -30) 
 RSB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-RSB.Text = "Rocket Spam: OFF"
+RSB.Text = "R-Spam: OFF"
 RSB.TextColor3 = Color3.new(1, 1, 1)
 RSB.Font = Enum.Font.Code
-RSB.TextSize = 13
+RSB.TextSize = 11
 
 RSB.MouseButton1Click:Connect(function()
     RocketSpamActive = not RocketSpamActive
-    RSB.Text = RocketSpamActive and "Rocket Spam: ON" or "Rocket Spam: OFF"
+    RSB.Text = RocketSpamActive and "R-Spam: ON" or "R-Spam: OFF"
     RSB.BackgroundColor3 = RocketSpamActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(60, 60, 60)
     if not RocketSpamActive then 
         RocketTargets = {} 
@@ -407,6 +558,82 @@ RSB.MouseButton1Click:Connect(function()
     end
 end)
 
+-- =====================================
+-- COLUMN 2 (NEW BUTTONS)
+-- =====================================
+local NCB = Instance.new("TextButton", MF)
+NCB.Size = UDim2.new(0.5, 0, 0, 30)
+NCB.Position = UDim2.new(0.5, 0, 1, -270)
+NCB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+NCB.Text = "Noclip: OFF"
+NCB.TextColor3 = Color3.new(1, 1, 1)
+NCB.Font = Enum.Font.Code
+NCB.TextSize = 11
+
+NCB.MouseButton1Click:Connect(function()
+    NoclipActive = not NoclipActive
+    NCB.Text = NoclipActive and "Noclip: ON" or "Noclip: OFF"
+    NCB.BackgroundColor3 = NoclipActive and Color3.fromRGB(150, 50, 150) or Color3.fromRGB(60, 60, 60)
+end)
+
+local ACB = Instance.new("TextButton", MF)
+ACB.Size = UDim2.new(0.5, 0, 0, 30)
+ACB.Position = UDim2.new(0.5, 0, 1, -240)
+ACB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ACB.Text = "Auto Chud: OFF"
+ACB.TextColor3 = Color3.new(1, 1, 1)
+ACB.Font = Enum.Font.Code
+ACB.TextSize = 11
+
+ACB.MouseButton1Click:Connect(function()
+    AutoChudActive = not AutoChudActive
+    ACB.Text = AutoChudActive and "Auto Chud: ON" or "Auto Chud: OFF"
+    ACB.BackgroundColor3 = AutoChudActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+    if not AutoChudActive then 
+        AutoChudTargets = {} 
+        for _, btn in pairs(SF:GetChildren()) do
+            if btn:IsA("TextButton") then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
+        end
+    end
+end)
+
+local ISB = Instance.new("TextButton", MF)
+ISB.Size = UDim2.new(0.5, 0, 0, 30)
+ISB.Position = UDim2.new(0.5, 0, 1, -210)
+ISB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ISB.Text = "Supernova: OFF"
+ISB.TextColor3 = Color3.new(1, 1, 1)
+ISB.Font = Enum.Font.Code
+ISB.TextSize = 11
+
+ISB.MouseButton1Click:Connect(function()
+    InfSupernovaActive = not InfSupernovaActive
+    ISB.Text = InfSupernovaActive and "Supernova: ON" or "Supernova: OFF"
+    ISB.BackgroundColor3 = InfSupernovaActive and Color3.fromRGB(200, 100, 50) or Color3.fromRGB(60, 60, 60)
+end)
+
+local APB = Instance.new("TextButton", MF)
+APB.Size = UDim2.new(0.5, 0, 0, 30)
+APB.Position = UDim2.new(0.5, 0, 1, -180)
+APB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+APB.Text = "Anti-Pickup: OFF"
+APB.TextColor3 = Color3.new(1, 1, 1)
+APB.Font = Enum.Font.Code
+APB.TextSize = 11
+
+APB.MouseButton1Click:Connect(function()
+    AntiPickupActive = not AntiPickupActive
+    APB.Text = AntiPickupActive and "Anti-Pickup: ON" or "Anti-Pickup: OFF"
+    APB.BackgroundColor3 = AntiPickupActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 60)
+    
+    if not AntiPickupActive then
+        restoreTools()
+    end
+end)
+
+-- =====================================
+-- WORLD EVENTS & BACKGROUND TASKS
+-- =====================================
 workspace.ChildAdded:Connect(function(child)
     if IsAntiLaser then
         RS.Heartbeat:Wait()
@@ -490,7 +717,7 @@ RS.Heartbeat:Connect(function()
 end)
 
 --------------------------------
--- NEW: WELD-TO-SELF & TP GIVE LOGIC (FIXED)
+-- WELD-TO-SELF & TP GIVE LOGIC 
 --------------------------------
 local function consistentWeldTPGive(targetPlayer)
     local char = LP.Character
@@ -572,7 +799,19 @@ local function E(t, btn)
         end
         return 
     end
+    
+    if AutoChudActive then
+        if AutoChudTargets[t] then
+            AutoChudTargets[t] = nil
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        else
+            AutoChudTargets[t] = true
+            btn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        end
+        return 
+    end
 
+    -- ORIGINAL CLONE SPAWN LOGIC
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -600,7 +839,20 @@ local function E(t, btn)
         end 
     end
 
-    if not eS or not sS then return end
+    -- VISUAL DEBUGGER ADDED HERE
+    if not eS or not sS then 
+        local oldText = btn.Text
+        btn.Text = "NO SWORDS!"
+        btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+        task.delay(1, function()
+            if btn and btn.Parent then
+                btn.Text = oldText
+                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            end
+        end)
+        return 
+    end
+
     local kd = sS:FindFirstChild("KeyDown")
     local originalCFrame = hrp.CFrame 
 
@@ -640,7 +892,7 @@ local function R()
             b.Text = p.Name
             b.TextColor3 = Color3.new(1, 1, 1)
             b.Font = Enum.Font.Code
-            b.TextSize = 14 
+            b.TextSize = 13 
             b.MouseButton1Click:Connect(function() E(p, b) end)
         end 
     end 
