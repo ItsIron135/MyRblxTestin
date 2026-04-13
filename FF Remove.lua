@@ -37,7 +37,7 @@ MF.Active = true; MF.Draggable = true; MF.BorderSizePixel = 0
 
 local T = Instance.new("TextLabel", MF)
 T.Size = UDim2.new(1, -30, 0, 30); T.BackgroundTransparency = 1
-T.Text = "FF V7.8 (RESIZED)"; T.TextColor3 = Color3.new(1, 1, 1)
+T.Text = "FF REMOVER"; T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code; T.TextSize = 14
 
 local function cleanupScanner()
@@ -249,6 +249,33 @@ local function populateOuterMenu()
             end
         end
     end
+
+    -- ==== NEW "TELEPORT ALL WALLS" MASTER BUTTON ====
+    local allWallsBtn = Instance.new("TextButton", OF_Scroll)
+    allWallsBtn.Size = UDim2.new(1, 0, 0, 30)
+    allWallsBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 40)
+    allWallsBtn.Text = "[ TELEPORT ALL WALLS ]"
+    allWallsBtn.TextColor3 = Color3.new(1, 1, 1)
+    allWallsBtn.Font = Enum.Font.Code
+    allWallsBtn.TextSize = 13
+    allWallsBtn.BorderSizePixel = 0
+
+    local allWallsToggle = false
+    local wallButtonsMap = {} -- Tracks all individual wall buttons to sync them
+
+    allWallsBtn.MouseButton1Click:Connect(function()
+        allWallsToggle = not allWallsToggle
+        allWallsBtn.BackgroundColor3 = allWallsToggle and Color3.fromRGB(0, 150, 255) or Color3.fromRGB(120, 40, 40)
+        
+        for part, btn in pairs(wallButtonsMap) do
+            -- Only toggle if it doesn't match the new master state
+            if (allWallsToggle and not ActiveObjects[part]) or (not allWallsToggle and ActiveObjects[part]) then
+                togglePart(part, btn, true, CAPTURE_SIZE)
+            end
+        end
+    end)
+    -- ================================================
+
     for _, baseName in pairs(baseInfo) do
         if foundWalls[baseName] then
             local label = Instance.new("TextLabel", OF_Scroll)
@@ -260,6 +287,10 @@ local function populateOuterMenu()
                 wBtn.Size = UDim2.new(1, 0, 0, 25); wBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
                 wBtn.Text = "Wall " .. i; wBtn.TextColor3 = Color3.new(1,1,1); wBtn.BorderSizePixel = 0
                 if ActiveObjects[wallPart] then wBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255) end
+                
+                -- Register this individual button to the master sync map
+                wallButtonsMap[wallPart] = wBtn 
+                
                 wBtn.MouseButton1Click:Connect(function() togglePart(wallPart, wBtn, true, CAPTURE_SIZE) end)
             end
         end
