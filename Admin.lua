@@ -1,3 +1,8 @@
+--[[ ADMIN PANEL - ORGANIZED, OPTIMIZED, & FULL SIZED ]]--
+
+---------------------------------------------------------
+-- SERVICES & INITIAL VARIABLES
+---------------------------------------------------------
 local P = game:GetService("Players")
 local LP = P.LocalPlayer
 local RS = game:GetService("RunService")
@@ -8,6 +13,80 @@ local PG = LP:FindFirstChild("PlayerGui") or LP:WaitForChild("PlayerGui", 5)
 
 if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
 
+---------------------------------------------------------
+-- STATE VARIABLES
+---------------------------------------------------------
+local desyncActive = false
+local ghostOffset = Vector3.new(0, 0, 0)
+local flySpeed = 2
+local desyncLoop = nil
+
+local RocketSpamActive = false
+local RocketTargets = {}
+
+local NoclipActive = false
+
+local AutoChudActive = false
+local AutoChudTargets = {}
+local isShootingFood = false
+
+local InfSupernovaActive = false
+local AntiPickupActive = false
+local disabledParts = {}
+
+local StealArmActive = false
+local StealArmTargets = {}
+
+local Flying = false
+local FlySpeed = 100 
+
+local GiveDroppedGearActive = false
+local GhostTouchActive = false
+local IsStackingActive = false
+local GiveAllActive = false
+local isGodMode = false
+local IsAntiLaser = false
+local AntiVoidActive = false
+local isAntiStealing = false
+
+local UsedSwords = {}
+local LatestClone = nil
+local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
+
+-- =====================================
+-- HOME TP SETUP LOGIC
+-- =====================================
+local homeCFrame = nil
+task.spawn(function()
+    local char = LP.Character or LP.CharacterAdded:Wait()
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    if not root then return end
+    
+    local closestDist = math.huge
+    local closestSpawn = nil
+    
+    for i = 1, 8 do
+        local spawnFolder = workspace:FindFirstChild("Spawn" .. i)
+        local spawnLoc = spawnFolder and spawnFolder:FindFirstChild("SpawnLocation")
+        
+        if spawnLoc and spawnLoc:IsA("BasePart") then
+            local dist = (spawnLoc.Position - root.Position).Magnitude
+            if dist < closestDist then
+                closestDist = dist
+                closestSpawn = spawnLoc
+            end
+        end
+    end
+    
+    if closestSpawn then
+        -- Set home right above the spawn block
+        homeCFrame = closestSpawn.CFrame + Vector3.new(0, 4, 0)
+    end
+end)
+
+---------------------------------------------------------
+-- CORE UI CREATION (KEPT ORIGINAL FORMAT)
+---------------------------------------------------------
 local SG = Instance.new("ScreenGui", PG)
 SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
@@ -27,214 +106,12 @@ T.TextColor3 = Color3.new(1, 1, 1)
 T.Font = Enum.Font.Code
 T.TextSize = 14
 
--- DESYNC VARIABLES
-local desyncActive = false
-local ghostOffset = Vector3.new(0, 0, 0)
-local flySpeed = 2
-local desyncLoop = nil
-
--- ROCKET VARIABLES
-local RocketSpamActive = false
-local RocketTargets = {}
-
--- NEW VARIABLES
-local NoclipActive = false
-
-local AutoChudActive = false
-local AutoChudTargets = {}
-local isShootingFood = false
-
-local InfSupernovaActive = false
-local AntiPickupActive = false
-local disabledParts = {}
-
--- STEAL ARM VARIABLES
-local StealArmActive = false
-local StealArmTargets = {}
-
---------------------------------
--- CLOSE-QUARTERS DYNAMIC ROCKET LOOP (FIXED: UNCRASHABLE)
---------------------------------
-task.spawn(function()
-    while true do
-        if RocketSpamActive then
-            local tool = LP.Backpack:FindFirstChild("RocketJumper") or (LP.Character and LP.Character:FindFirstChild("RocketJumper"))
-            if tool and tool:FindFirstChild("FireRocket") then
-                for targetPlayer, isActive in pairs(RocketTargets) do
-                    if isActive and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        local hrp = targetPlayer.Character.HumanoidRootPart
-                        local vel = hrp.Velocity
-                        
-                        local targetPos = hrp.Position + (vel * 0.05)
-                        local spawnPos
-                        if vel.Magnitude > 1 then
-                            local randomSpread = Vector3.new(math.random(-3, 3), math.random(0, 4), math.random(-3, 3))
-                            spawnPos = targetPos + (vel.Unit * 5) + randomSpread
-                        else
-                            local randomSpread = Vector3.new(math.random(-5, 5), math.random(1, 5), math.random(-5, 5))
-                            spawnPos = targetPos + randomSpread
-                        end
-                        
-                        pcall(function()
-                            tool.Enabled = true
-                            tool.FireRocket:FireServer(targetPos, spawnPos)
-                        end)
-                    end
-                end
-            end
-        end
-        task.wait(0.02)
-    end
-end)
-
---------------------------------
--- AUTO CHUD LOGIC
---------------------------------
-workspace.ChildAdded:Connect(function(child)
-    if AutoChudActive and (child.Name == "Burger" or child.Name == "Fries") then
-        local targetHRP = nil
-        for t, active in pairs(AutoChudTargets) do
-            if active and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
-                targetHRP = t.Character.HumanoidRootPart
-                break
-            end
-        end
-        
-        if targetHRP then
-            local bv = child:WaitForChild("BodyVelocity", 0.5)
-            local bg = child:WaitForChild("BodyGyro", 0.5)
-            if bv then bv:Destroy() end
-            if bg then bg:Destroy() end
-            
-            child.CanCollide = false
-            child.CFrame = targetHRP.CFrame
-        end
-    end
-end)
-
-task.spawn(function()
-    while true do
-        task.wait(0.1)
-        if AutoChudActive then
-            local hasTarget = false
-            for t, active in pairs(AutoChudTargets) do
-                if active and t.Character then hasTarget = true break end
-            end
-            
-            if hasTarget and not isShootingFood then
-                local bp = LP:FindFirstChild("Backpack")
-                local char = LP.Character
-                if bp and char then
-                    local guns = {}
-                    for _, item in pairs(bp:GetChildren()) do
-                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
-                    end
-                    for _, item in pairs(char:GetChildren()) do
-                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
-                    end
-                    for _, gun in ipairs(guns) do
-                        if gun.Enabled then
-                            isShootingFood = true
-                            task.spawn(function()
-                                gun.Parent = char
-                                task.wait(0.08) 
-                                pcall(function() gun:Activate() end)
-                                task.wait(0.05) 
-                                gun.Parent = bp
-                                isShootingFood = false
-                            end)
-                            break 
-                        end
-                    end
-                end
-            end
-        end
-    end
-end)
-
---------------------------------
--- INF SUPERNOVA LOGIC
---------------------------------
-task.spawn(function()
-    while true do
-        if InfSupernovaActive then 
-            local path = workspace:FindFirstChild("SingleRollDingle10")
-            if path then path = path:FindFirstChild("IvoryPeriastron") end
-            if path then path = path:FindFirstChild("Server") end
-            if path then path = path:FindFirstChild("StarSummon") end
-            if path then
-                for _, child in ipairs(path:GetChildren()) do
-                    if child.Name == "StarShard" or child.Name == "Explosion" then
-                        child:Destroy()
-                    end
-                end
-            end
-        end
-        task.wait(0.1)
-    end
-end)
-
---------------------------------
--- ANTI-PICKUP LOGIC
---------------------------------
-local function restoreTools()
-    for _, part in ipairs(disabledParts) do
-        if part and part.Parent then 
-            part.CanTouch = true
-        end
-    end
-    disabledParts = {}
-end
-
-task.spawn(function()
-    while true do
-        if AntiPickupActive then
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("Tool") then
-                    for _, child in ipairs(obj:GetChildren()) do
-                        if child:IsA("BasePart") and child:FindFirstChildWhichIsA("TouchTransmitter") then
-                            if child.CanTouch == true then
-                                child.CanTouch = false
-                                table.insert(disabledParts, child)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
---------------------------------
--- NOCLIP LOGIC
---------------------------------
-RS.Stepped:Connect(function()
-    if NoclipActive and LP.Character then
-        for _, part in ipairs(LP.Character:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
-            end
-        end
-    end
-end)
-
-
 local CB = Instance.new("TextButton", MF)
 CB.Size = UDim2.new(0, 30, 0, 30)
 CB.Position = UDim2.new(1, -30, 0, 0)
 CB.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CB.Text = "X"
 CB.TextColor3 = Color3.new(1, 1, 1)
-CB.MouseButton1Click:Connect(function() 
-    if desyncActive then 
-        desyncActive = false
-        if desyncLoop then desyncLoop:Disconnect() end
-    end
-    AntiPickupActive = false
-    restoreTools()
-    SG:Destroy() 
-end)
 
 local SF = Instance.new("ScrollingFrame", MF)
 SF.Size = UDim2.new(1, 0, 1, -300) 
@@ -251,18 +128,91 @@ UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     SF.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
 end)
 
-local LatestClone = nil
-workspace.ChildAdded:Connect(function(child)
-    if child.Name == LP.Name .. "'s Clone" then
-        LatestClone = child
+---------------------------------------------------------
+-- UTILITY FUNCTIONS
+---------------------------------------------------------
+local function restoreTools()
+    for _, part in ipairs(disabledParts) do
+        if part and part.Parent then part.CanTouch = true end
     end
+    disabledParts = {}
+end
+
+local function consistentWeldTPGive(targetPlayer)
+    local char = LP.Character
+    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
+    local tc = targetPlayer.Character
+    local thrp = tc and (tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Torso"))
+    if not root or not thrp then return end
+
+    local gears, welds = {}, {}
+    local originalCFrame = root.CFrame
+
+    for _, item in ipairs(workspace:GetChildren()) do
+        if item:IsA("Tool") then
+            local handle = item:FindFirstChild("Handle")
+            if handle and handle:IsA("BasePart") then
+                handle.Anchored = false 
+                handle.CFrame = root.CFrame
+                
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = root
+                weld.Part1 = handle
+                weld.Parent = root
+                
+                table.insert(gears, handle)
+                table.insert(welds, weld)
+            end
+        end
+    end
+
+    if #gears == 0 then return end
+
+    task.spawn(function()
+        local start = tick()
+        while tick() - start < 1 do
+            if root and thrp and thrp.Parent then
+                root.CFrame = thrp.CFrame
+                for i = #gears, 1, -1 do
+                    local h = gears[i]
+                    local w = welds[i]
+                    local tool = h and h.Parent
+                    if tool and tool.Parent ~= workspace then
+                        if w then w:Destroy() end 
+                        table.remove(gears, i)
+                        table.remove(welds, i)
+                    elseif h and h.Parent then
+                        firetouchinterest(thrp, h, 0)
+                        firetouchinterest(thrp, h, 1)
+                    end
+                end
+            end
+            RS.Heartbeat:Wait()
+        end
+        for _, w in ipairs(welds) do if w then w:Destroy() end end
+        if root then root.CFrame = originalCFrame end
+    end)
+end
+
+---------------------------------------------------------
+-- UI BUTTONS & TRIGGERED LOOP LOGIC
+---------------------------------------------------------
+
+CB.MouseButton1Click:Connect(function() 
+    if desyncActive then 
+        desyncActive = false
+        if desyncLoop then desyncLoop:Disconnect() end
+    end
+    AntiPickupActive = false
+    restoreTools()
+    SG:Destroy() 
 end)
 
 -- =====================================
--- FULL WIDTH BUTTONS
+-- TOP BUTTONS (NOW SPLIT)
 -- =====================================
 local TVB = Instance.new("TextButton", MF)
-TVB.Size = UDim2.new(1, 0, 0, 30)
+TVB.Size = UDim2.new(0.5, 0, 0, 30)
 TVB.Position = UDim2.new(0, 0, 1, -300)
 TVB.BackgroundColor3 = Color3.fromRGB(80, 40, 80) -- Purple hue for void
 TVB.Text = "TP To Void"
@@ -278,11 +228,36 @@ TVB.MouseButton1Click:Connect(function()
     end
 end)
 
--- =====================================
--- COLUMN 1 (ORIGINAL BUTTONS)
--- =====================================
-local Flying = false
-local FlySpeed = 100 
+local THB = Instance.new("TextButton", MF)
+THB.Size = UDim2.new(0.5, 0, 0, 30)
+THB.Position = UDim2.new(0.5, 0, 1, -300)
+THB.BackgroundColor3 = Color3.fromRGB(40, 80, 40) -- Dark Green for Home
+THB.Text = "TP Home"
+THB.TextColor3 = Color3.new(1, 1, 1)
+THB.Font = Enum.Font.Code
+THB.TextSize = 12
+
+THB.MouseButton1Click:Connect(function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        if homeCFrame then
+            root.CFrame = homeCFrame
+        else
+            local oldText = THB.Text
+            THB.Text = "NO HOME!"
+            THB.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+            task.delay(1, function()
+                if THB and THB.Parent then
+                    THB.Text = oldText
+                    THB.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
+                end
+            end)
+        end
+    end
+end)
+
+-- COLUMN 1 BUTTONS
 local FLB = Instance.new("TextButton", MF)
 FLB.Size = UDim2.new(0.5, 0, 0, 30)
 FLB.Position = UDim2.new(0, 0, 1, -270)
@@ -320,12 +295,7 @@ FLB.MouseButton1Click:Connect(function()
                 if UIS:IsKeyDown(Enum.KeyCode.Space) then dir = dir + Vector3.new(0, 1, 0) end
                 if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir = dir - Vector3.new(0, 1, 0) end
                 
-                if dir.Magnitude > 0 then
-                    bv.Velocity = dir.Unit * FlySpeed
-                else
-                    bv.Velocity = Vector3.new(0, 0, 0)
-                end
-                
+                if dir.Magnitude > 0 then bv.Velocity = dir.Unit * FlySpeed else bv.Velocity = Vector3.new(0, 0, 0) end
                 bg.CFrame = cam.CFrame
                 task.wait()
             end
@@ -335,7 +305,6 @@ FLB.MouseButton1Click:Connect(function()
     end
 end)
 
-local GiveDroppedGearActive = false
 local GDGB = Instance.new("TextButton", MF)
 GDGB.Size = UDim2.new(0.5, 0, 0, 30)
 GDGB.Position = UDim2.new(0, 0, 1, -240)
@@ -368,7 +337,6 @@ PDB.MouseButton1Click:Connect(function()
     local char = LP.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    
     if not char or not hum or not root then return end
 
     if desyncActive then
@@ -389,6 +357,7 @@ PDB.MouseButton1Click:Connect(function()
             end
         end
 
+        -- FIXED DT SPEED
         desyncLoop = RS.Heartbeat:Connect(function(dt)
             if not desyncActive then return end
             
@@ -400,16 +369,14 @@ PDB.MouseButton1Click:Connect(function()
             if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= lookCF.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += lookCF.RightVector end
             
-            if moveDir.Magnitude > 0 then
-                ghostOffset = ghostOffset + (moveDir.Unit * flySpeed)
+            if moveDir.Magnitude > 0 then 
+                ghostOffset = ghostOffset + (moveDir.Unit * (FlySpeed * dt)) 
             end
             
             local basePos = root.Position + ghostOffset
             local ghostRot = lookCF.Rotation
             
-            ------------------------------------------
             -- STEAL ARM DESYNC OVERRIDE LOGIC
-            ------------------------------------------
             if StealArmActive then
                 local stealTargetChar = nil
                 for tPlayer, isActive in pairs(StealArmTargets) do
@@ -420,28 +387,27 @@ PDB.MouseButton1Click:Connect(function()
                 end
                 
                 if stealTargetChar then
-                    -- Support both R6 and R15 left arms
                     local targetLeftArm = stealTargetChar:FindFirstChild("Left Arm") or stealTargetChar:FindFirstChild("LeftLowerArm") or stealTargetChar:FindFirstChild("LeftHand")
                     if targetLeftArm then
                         local myRightArmOffset = Vector3.new(1.5, 0, 0)
-                        
-                        -- Set our ghost base position so that our right arm is perfectly aligned with their left arm
                         basePos = targetLeftArm.Position - (ghostRot * myRightArmOffset)
-                        
-                        -- Keep ghostOffset synced so when we turn this off, we don't snap wildly back to where we were before
                         ghostOffset = basePos - root.Position 
                     end
                 end
             end
-            ------------------------------------------
             
+            -- RIG C-FRAMING WITH EQUIP POSE
             for _, part in pairs(char:GetChildren()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                     local n = part.Name
                     local pOffset = CFrame.new(0, 0, 0)
                     
                     if n:match("Right Arm") or n:match("RightUpperArm") or n:match("RightLowerArm") or n:match("RightHand") then
-                        pOffset = CFrame.new(1.5, 0, 0)
+                        if char:FindFirstChildOfClass("Tool") then
+                            pOffset = CFrame.new(1.5, 0.5, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
+                        else
+                            pOffset = CFrame.new(1.5, 0, 0)
+                        end
                     elseif n:match("Left Arm") or n:match("LeftUpperArm") or n:match("LeftLowerArm") or n:match("LeftHand") then
                         pOffset = CFrame.new(-1.5, 0, 0)
                     elseif n:match("Leg") or n:match("Foot") then 
@@ -483,7 +449,6 @@ PDB.MouseButton1Click:Connect(function()
     end
 end)
 
-local GhostTouchActive = false
 local GTB = Instance.new("TextButton", MF)
 GTB.Size = UDim2.new(0.5, 0, 0, 30)
 GTB.Position = UDim2.new(0, 0, 1, -180)
@@ -499,7 +464,6 @@ GTB.MouseButton1Click:Connect(function()
     GTB.BackgroundColor3 = GhostTouchActive and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
-local IsStackingActive = false
 local STB = Instance.new("TextButton", MF)
 STB.Size = UDim2.new(0.5, 0, 0, 30)
 STB.Position = UDim2.new(0, 0, 1, -150)
@@ -529,7 +493,6 @@ STB.MouseButton1Click:Connect(function()
     end
 end)
 
-local GiveAllActive = false
 local GAB = Instance.new("TextButton", MF)
 GAB.Size = UDim2.new(0.5, 0, 0, 30)
 GAB.Position = UDim2.new(0, 0, 1, -120)
@@ -673,7 +636,6 @@ APB.MouseButton1Click:Connect(function()
     end
 end)
 
-local AntiVoidActive = false
 local AVB = Instance.new("TextButton", MF)
 AVB.Size = UDim2.new(0.5, 0, 0, 30)
 AVB.Position = UDim2.new(0.5, 0, 1, -150)
@@ -717,6 +679,7 @@ SAB.MouseButton1Click:Connect(function()
     end
 end)
 
+-- NUCLEAR LEFT ARM DROP LOGIC
 local AASB = Instance.new("TextButton", MF)
 AASB.Size = UDim2.new(0.5, 0, 0, 30)
 AASB.Position = UDim2.new(0.5, 0, 1, -90)
@@ -732,35 +695,54 @@ AASB.MouseButton1Click:Connect(function()
     isAntiStealing = true
     
     AASB.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-    AASB.Text = "Spamming..."
+    AASB.Text = "DROPPING LEFT ARM..."
     
     task.spawn(function()
         local char = LP.Character
-        local bp = LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         
-        if char and bp and hum then
-            local knife = bp:FindFirstChild("MadMurdererKnife") or char:FindFirstChild("MadMurdererKnife")
+        if char and hum then
+            hum:UnequipTools()
+            task.wait(0.05)
             
-            if knife then
-                local startTime = tick()
-                -- Quickly bounce parent between backpack and character to rapidly trigger equip/unequip events
-                while tick() - startTime < 0.5 do
-                    knife.Parent = char
-                    task.wait(0.02)
-                    knife.Parent = bp
-                    task.wait(0.02)
+            local torso = char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso")
+            
+            local armParts = {}
+            for _, name in pairs({"Left Arm", "LeftUpperArm", "LeftLowerArm", "LeftHand"}) do
+                local part = char:FindFirstChild(name)
+                if part then table.insert(armParts, part) end
+            end
+            
+            if torso and #armParts > 0 then
+                for _, obj in pairs(torso:GetChildren()) do
+                    if obj:IsA("JointInstance") then
+                        for _, armPart in pairs(armParts) do
+                            if obj.Part0 == armPart or obj.Part1 == armPart then
+                                obj:Destroy()
+                            end
+                        end
+                    end
                 end
-                -- Ensure the tool ends up completely unequipped
-                hum:UnequipTools()
-                knife.Parent = bp
-            else
-                AASB.Text = "NO KNIFE!"
-                task.wait(1)
+                
+                for _, armPart in pairs(armParts) do
+                    for _, obj in pairs(armPart:GetChildren()) do
+                        if obj:IsA("JointInstance") or obj:IsA("BodyMover") or obj:IsA("Constraint") then
+                            obj:Destroy()
+                        end
+                    end
+                    
+                    armPart.Anchored = false
+                    armPart.CanCollide = false
+                    armPart.CFrame = CFrame.new(0, -600, 0) 
+                end
+                
+                hum:ChangeState(Enum.HumanoidStateType.Physics)
+                task.wait(0.1)
+                hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
         end
         
-        -- Reset Button
+        task.wait(1.5)
         AASB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         AASB.Text = "Anti-Arm Steal"
         isAntiStealing = false
@@ -781,6 +763,139 @@ workspace.ChildAdded:Connect(function(child)
             end
             child:Destroy()
         end
+    end
+    
+    if AutoChudActive and (child.Name == "Burger" or child.Name == "Fries") then
+        local targetHRP = nil
+        for t, active in pairs(AutoChudTargets) do
+            if active and t.Character and t.Character:FindFirstChild("HumanoidRootPart") then
+                targetHRP = t.Character.HumanoidRootPart
+                break
+            end
+        end
+        
+        if targetHRP then
+            local bv = child:WaitForChild("BodyVelocity", 0.5)
+            local bg = child:WaitForChild("BodyGyro", 0.5)
+            if bv then bv:Destroy() end
+            if bg then bg:Destroy() end
+            
+            child.CanCollide = false
+            child.CFrame = targetHRP.CFrame
+        end
+    end
+
+    if child.Name == LP.Name .. "'s Clone" then LatestClone = child end
+end)
+
+task.spawn(function()
+    while true do
+        if RocketSpamActive then
+            local tool = LP.Backpack:FindFirstChild("RocketJumper") or (LP.Character and LP.Character:FindFirstChild("RocketJumper"))
+            if tool and tool:FindFirstChild("FireRocket") then
+                for targetPlayer, isActive in pairs(RocketTargets) do
+                    if isActive and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                        local hrp = targetPlayer.Character.HumanoidRootPart
+                        local vel = hrp.Velocity
+                        
+                        local targetPos = hrp.Position + (vel * 0.05)
+                        local spawnPos
+                        if vel.Magnitude > 1 then
+                            local randomSpread = Vector3.new(math.random(-3, 3), math.random(0, 4), math.random(-3, 3))
+                            spawnPos = targetPos + (vel.Unit * 5) + randomSpread
+                        else
+                            local randomSpread = Vector3.new(math.random(-5, 5), math.random(1, 5), math.random(-5, 5))
+                            spawnPos = targetPos + randomSpread
+                        end
+                        
+                        pcall(function()
+                            tool.Enabled = true
+                            tool.FireRocket:FireServer(targetPos, spawnPos)
+                        end)
+                    end
+                end
+            end
+        end
+        task.wait(0.02)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if AutoChudActive then
+            local hasTarget = false
+            for t, active in pairs(AutoChudTargets) do
+                if active and t.Character then hasTarget = true break end
+            end
+            
+            if hasTarget and not isShootingFood then
+                local bp = LP:FindFirstChild("Backpack")
+                local char = LP.Character
+                if bp and char then
+                    local guns = {}
+                    for _, item in pairs(bp:GetChildren()) do
+                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
+                    end
+                    for _, item in pairs(char:GetChildren()) do
+                        if item:IsA("Tool") and item.Name == "BeefWellingtonGun" then table.insert(guns, item) end
+                    end
+                    for _, gun in ipairs(guns) do
+                        if gun.Enabled then
+                            isShootingFood = true
+                            task.spawn(function()
+                                gun.Parent = char
+                                task.wait(0.08) 
+                                pcall(function() gun:Activate() end)
+                                task.wait(0.05) 
+                                gun.Parent = bp
+                                isShootingFood = false
+                            end)
+                            break 
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if InfSupernovaActive then 
+            local path = workspace:FindFirstChild("SingleRollDingle10")
+            if path then path = path:FindFirstChild("IvoryPeriastron") end
+            if path then path = path:FindFirstChild("Server") end
+            if path then path = path:FindFirstChild("StarSummon") end
+            if path then
+                for _, child in ipairs(path:GetChildren()) do
+                    if child.Name == "StarShard" or child.Name == "Explosion" then
+                        child:Destroy()
+                    end
+                end
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+task.spawn(function()
+    while true do
+        if AntiPickupActive then
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Tool") then
+                    for _, child in ipairs(obj:GetChildren()) do
+                        if child:IsA("BasePart") and child:FindFirstChildWhichIsA("TouchTransmitter") then
+                            if child.CanTouch == true then
+                                child.CanTouch = false
+                                table.insert(disabledParts, child)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(0.5)
     end
 end)
 
@@ -852,80 +967,21 @@ RS.Heartbeat:Connect(function()
     end
 end)
 
---------------------------------
--- WELD-TO-SELF & TP GIVE LOGIC 
---------------------------------
-local function consistentWeldTPGive(targetPlayer)
-    local char = LP.Character
-    local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
-    
-    local tc = targetPlayer.Character
-    local thrp = tc and (tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Torso"))
-    
-    if not root or not thrp then return end
-
-    local gears = {}
-    local welds = {}
-    local originalCFrame = root.CFrame
-
-    for _, item in ipairs(workspace:GetChildren()) do
-        if item:IsA("Tool") then
-            local handle = item:FindFirstChild("Handle")
-            if handle and handle:IsA("BasePart") then
-                handle.Anchored = false 
-                handle.CFrame = root.CFrame
-                
-                local weld = Instance.new("WeldConstraint")
-                weld.Part0 = root
-                weld.Part1 = handle
-                weld.Parent = root
-                
-                table.insert(gears, handle)
-                table.insert(welds, weld)
+RS.Stepped:Connect(function()
+    if NoclipActive and LP.Character then
+        for _, part in ipairs(LP.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
             end
         end
     end
+end)
 
-    if #gears == 0 then return end
-
-    task.spawn(function()
-        local start = tick()
-        while tick() - start < 1 do
-            if root and thrp and thrp.Parent then
-                root.CFrame = thrp.CFrame
-                
-                for i = #gears, 1, -1 do
-                    local h = gears[i]
-                    local w = welds[i]
-                    local tool = h and h.Parent
-                    
-                    if tool and tool.Parent ~= workspace then
-                        if w then w:Destroy() end 
-                        table.remove(gears, i)
-                        table.remove(welds, i)
-                    elseif h and h.Parent then
-                        firetouchinterest(thrp, h, 0)
-                        firetouchinterest(thrp, h, 1)
-                    end
-                end
-            end
-            RS.Heartbeat:Wait()
-        end
-        
-        for _, w in ipairs(welds) do
-            if w then w:Destroy() end
-        end
-        
-        if root then
-            root.CFrame = originalCFrame
-        end
-    end)
-end
-
-local UsedSwords = {}
+---------------------------------------------------------
+-- PLAYER LIST CLICK LOGIC
+---------------------------------------------------------
 
 local function E(t, btn)
-    -- STEAL ARM PLAYER CLICK LOGIC
     if StealArmActive then
         if StealArmTargets[t] then
             StealArmTargets[t] = nil
@@ -938,13 +994,10 @@ local function E(t, btn)
             StealArmTargets[t] = true
             btn.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
             
-            -- NEW: 1-Second Auto-Release Timer
             task.delay(0.5, function()
                 if StealArmTargets[t] then
-                    StealArmTargets[t] = nil -- Stop locking onto them
-                    if btn and btn.Parent then
-                        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Reset button color
-                    end
+                    StealArmTargets[t] = nil 
+                    if btn and btn.Parent then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
                 end
             end)
         end
@@ -973,7 +1026,6 @@ local function E(t, btn)
         return 
     end
 
-    -- ORIGINAL CLONE SPAWN LOGIC
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -1001,7 +1053,6 @@ local function E(t, btn)
         end 
     end
 
-    -- VISUAL DEBUGGER 
     if not eS or not sS then 
         local oldText = btn.Text
         btn.Text = "NO SWORDS!"
@@ -1044,7 +1095,6 @@ local function E(t, btn)
     end)
 end
 
--- FIXED PLAYER LIST REFRESH VISUAL BUG!
 local function R()
     for _, item in pairs(SF:GetChildren()) do if item:IsA("TextButton") then item:Destroy() end end
     for _, p in pairs(P:GetPlayers()) do 
@@ -1052,7 +1102,6 @@ local function R()
             local b = Instance.new("TextButton", SF)
             b.Size = UDim2.new(1, 0, 0, 25) 
             
-            -- Keep color if they are already an active target!
             if RocketSpamActive and RocketTargets[p] then
                 b.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             elseif AutoChudActive and AutoChudTargets[p] then
