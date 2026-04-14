@@ -258,6 +258,26 @@ workspace.ChildAdded:Connect(function(child)
 end)
 
 -- =====================================
+-- FULL WIDTH BUTTONS
+-- =====================================
+local TVB = Instance.new("TextButton", MF)
+TVB.Size = UDim2.new(1, 0, 0, 30)
+TVB.Position = UDim2.new(0, 0, 1, -300)
+TVB.BackgroundColor3 = Color3.fromRGB(80, 40, 80) -- Purple hue for void
+TVB.Text = "TP To Void"
+TVB.TextColor3 = Color3.new(1, 1, 1)
+TVB.Font = Enum.Font.Code
+TVB.TextSize = 12
+
+TVB.MouseButton1Click:Connect(function()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CFrame = CFrame.new(-1063.3, -491.6, 368.2)
+    end
+end)
+
+-- =====================================
 -- COLUMN 1 (ORIGINAL BUTTONS)
 -- =====================================
 local Flying = false
@@ -653,6 +673,34 @@ AVB.MouseButton1Click:Connect(function()
     end
 end)
 
+-- LIVE COORDS TOGGLE & DISPLAY 
+local LiveCoordsActive = false
+local LCB = Instance.new("TextButton", MF)
+LCB.Size = UDim2.new(0.5, 0, 0, 30)
+LCB.Position = UDim2.new(0.5, 0, 1, -120)
+LCB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+LCB.Text = "Coords: OFF"
+LCB.TextColor3 = Color3.new(1, 1, 1)
+LCB.Font = Enum.Font.Code
+LCB.TextSize = 11
+
+local CoordsDisplay = Instance.new("TextLabel", MF)
+CoordsDisplay.Size = UDim2.new(0.5, 0, 0, 90)
+CoordsDisplay.Position = UDim2.new(0.5, 0, 1, -90)
+CoordsDisplay.BackgroundTransparency = 1
+CoordsDisplay.Text = ""
+CoordsDisplay.TextColor3 = Color3.fromRGB(50, 200, 100)
+CoordsDisplay.Font = Enum.Font.Code
+CoordsDisplay.TextSize = 13
+CoordsDisplay.Visible = false
+
+LCB.MouseButton1Click:Connect(function()
+    LiveCoordsActive = not LiveCoordsActive
+    LCB.Text = LiveCoordsActive and "Coords: ON" or "Coords: OFF"
+    LCB.BackgroundColor3 = LiveCoordsActive and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(60, 60, 60)
+    CoordsDisplay.Visible = LiveCoordsActive
+end)
+
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
 -- =====================================
@@ -699,6 +747,17 @@ end)
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local bp = LP:FindFirstChild("Backpack")
+
+    -- UPDATED LIVE COORDS LOGIC INSIDE EXISTING LOOP
+    if LiveCoordsActive then
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            local pos = root.Position
+            CoordsDisplay.Text = string.format("X: %.1f\nY: %.1f\nZ: %.1f", pos.X, pos.Y, pos.Z)
+        else
+            CoordsDisplay.Text = "Waiting..."
+        end
+    end
     
     if IsStackingActive and char and bp then
         local heldTool = char:FindFirstChildOfClass("Tool")
