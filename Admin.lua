@@ -13,7 +13,7 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 240, 0, 400) 
+MF.Size = UDim2.new(0, 240, 0, 500) 
 MF.Position = UDim2.new(0.85, -120, 0.5, -200)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
@@ -50,6 +50,10 @@ local InfSupernovaActive = false
 local AntiPickupActive = false
 local disabledParts = {}
 
+-- STEAL ARM VARIABLES
+local StealArmActive = false
+local StealArmTargets = {}
+
 --------------------------------
 -- CLOSE-QUARTERS DYNAMIC ROCKET LOOP (FIXED: UNCRASHABLE)
 --------------------------------
@@ -73,7 +77,6 @@ task.spawn(function()
                             spawnPos = targetPos + randomSpread
                         end
                         
-                        -- pcall prevents the loop from breaking if the tool is suddenly deleted
                         pcall(function()
                             tool.Enabled = true
                             tool.FireRocket:FireServer(targetPos, spawnPos)
@@ -240,7 +243,7 @@ SF.Size = UDim2.new(1, 0, 1, -300)
 SF.Position = UDim2.new(0, 0, 0, 30)
 SF.BackgroundTransparency = 1
 SF.CanvasSize = UDim2.new(0, 0, 0, 0)
-SF.ScrollBarThickness = 0 
+SF.ScrollBarThickness = 6 
 SF.ScrollingEnabled = true
 SF.Active = true
 
@@ -410,6 +413,36 @@ PDB.MouseButton1Click:Connect(function()
             
             local basePos = root.Position + ghostOffset
             local ghostRot = lookCF.Rotation
+            
+            ------------------------------------------
+            -- STEAL ARM DESYNC OVERRIDE LOGIC
+            ------------------------------------------
+            if StealArmActive then
+                local stealTargetChar = nil
+                for tPlayer, isActive in pairs(StealArmTargets) do
+                    if isActive and tPlayer.Character then
+                        stealTargetChar = tPlayer.Character
+                        break
+                    end
+                end
+                
+                if stealTargetChar then
+                    -- Support both R6 and R15 left arms
+                    local targetLeftArm = stealTargetChar:FindFirstChild("Left Arm") or stealTargetChar:FindFirstChild("LeftLowerArm") or stealTargetChar:FindFirstChild("LeftHand")
+                    if targetLeftArm then
+                        local sidePose = CFrame.new(1.5, 0, 0)
+                        local gearPose = CFrame.new(1.5, 0.6, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
+                        local myRightArmOffset = sidePose:Lerp(gearPose, equipLerp).Position
+                        
+                        -- Set our ghost base position so that our right arm is perfectly aligned with their left arm
+                        basePos = targetLeftArm.Position - (ghostRot * myRightArmOffset)
+                        
+                        -- Keep ghostOffset synced so when we turn this off, we don't snap wildly back to where we were before
+                        ghostOffset = basePos - root.Position 
+                    end
+                end
+            end
+            ------------------------------------------
             
             for _, part in pairs(char:GetChildren()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
@@ -673,6 +706,28 @@ AVB.MouseButton1Click:Connect(function()
     end
 end)
 
+local SAB = Instance.new("TextButton", MF)
+SAB.Size = UDim2.new(0.5, 0, 0, 30)
+SAB.Position = UDim2.new(0.5, 0, 1, -120)
+SAB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SAB.Text = "Steal Arm: OFF"
+SAB.TextColor3 = Color3.new(1, 1, 1)
+SAB.Font = Enum.Font.Code
+SAB.TextSize = 11
+
+SAB.MouseButton1Click:Connect(function()
+    StealArmActive = not StealArmActive
+    SAB.Text = StealArmActive and "Steal Arm: ON" or "Steal Arm: OFF"
+    SAB.BackgroundColor3 = StealArmActive and Color3.fromRGB(180, 120, 0) or Color3.fromRGB(60, 60, 60)
+    
+    if not StealArmActive then
+        StealArmTargets = {}
+        for _, btn in pairs(SF:GetChildren()) do
+            if btn:IsA("TextButton") then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
+        end
+    end
+end)
+
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
 -- =====================================
@@ -831,6 +886,32 @@ end
 local UsedSwords = {}
 
 local function E(t, btn)
+    -- STEAL ARM PLAYER CLICK LOGIC
+    if StealArmActive then
+        if StealArmTargets[t] then
+            StealArmTargets[t] = nil
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        else
+            StealArmTargets = {}
+            for _, b in pairs(SF:GetChildren()) do
+                if b:IsA("TextButton") then b.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
+            end
+            StealArmTargets[t] = true
+            btn.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
+            
+            -- NEW: 1-Second Auto-Release Timer
+            task.delay(0.5, function()
+                if StealArmTargets[t] then
+                    StealArmTargets[t] = nil -- Stop locking onto them
+                    if btn and btn.Parent then
+                        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Reset button color
+                    end
+                end
+            end)
+        end
+        return
+    end
+
     if RocketSpamActive then
         if RocketTargets[t] then
             RocketTargets[t] = nil
@@ -937,6 +1018,8 @@ local function R()
                 b.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
             elseif AutoChudActive and AutoChudTargets[p] then
                 b.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+            elseif StealArmActive and StealArmTargets[p] then
+                b.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
             else
                 b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             end
