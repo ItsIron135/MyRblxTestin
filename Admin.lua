@@ -13,7 +13,7 @@ SG.Name = "StealerUI"
 SG.ResetOnSpawn = false
 
 local MF = Instance.new("Frame", SG)
-MF.Size = UDim2.new(0, 240, 0, 500) 
+MF.Size = UDim2.new(0, 240, 0, 520) 
 MF.Position = UDim2.new(0.85, -120, 0.5, -200)
 MF.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MF.Active = true
@@ -31,8 +31,6 @@ T.TextSize = 14
 local desyncActive = false
 local ghostOffset = Vector3.new(0, 0, 0)
 local flySpeed = 2
-local equipLerp = 0
-local animSpeed = 18
 local desyncLoop = nil
 
 -- ROCKET VARIABLES
@@ -375,7 +373,6 @@ PDB.MouseButton1Click:Connect(function()
 
     if desyncActive then
         ghostOffset = Vector3.new(0, 0, 0)
-        equipLerp = 0
         hum.PlatformStand = true
         hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
         
@@ -397,10 +394,6 @@ PDB.MouseButton1Click:Connect(function()
             
             local lookCF = cam.CFrame
             local moveDir = Vector3.new(0, 0, 0)
-            local isHoldingTool = char:FindFirstChildOfClass("Tool") ~= nil
-            
-            local target = isHoldingTool and 1 or 0
-            equipLerp = equipLerp + (target - equipLerp) * math.clamp(dt * animSpeed, 0, 1)
 
             if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += lookCF.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= lookCF.LookVector end
@@ -430,9 +423,7 @@ PDB.MouseButton1Click:Connect(function()
                     -- Support both R6 and R15 left arms
                     local targetLeftArm = stealTargetChar:FindFirstChild("Left Arm") or stealTargetChar:FindFirstChild("LeftLowerArm") or stealTargetChar:FindFirstChild("LeftHand")
                     if targetLeftArm then
-                        local sidePose = CFrame.new(1.5, 0, 0)
-                        local gearPose = CFrame.new(1.5, 0.6, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
-                        local myRightArmOffset = sidePose:Lerp(gearPose, equipLerp).Position
+                        local myRightArmOffset = Vector3.new(1.5, 0, 0)
                         
                         -- Set our ghost base position so that our right arm is perfectly aligned with their left arm
                         basePos = targetLeftArm.Position - (ghostRot * myRightArmOffset)
@@ -450,9 +441,7 @@ PDB.MouseButton1Click:Connect(function()
                     local pOffset = CFrame.new(0, 0, 0)
                     
                     if n:match("Right Arm") or n:match("RightUpperArm") or n:match("RightLowerArm") or n:match("RightHand") then
-                        local sidePose = CFrame.new(1.5, 0, 0)
-                        local gearPose = CFrame.new(1.5, 0.6, -0.5) * CFrame.Angles(math.rad(90), 0, 0)
-                        pOffset = sidePose:Lerp(gearPose, equipLerp)
+                        pOffset = CFrame.new(1.5, 0, 0)
                     elseif n:match("Left Arm") or n:match("LeftUpperArm") or n:match("LeftLowerArm") or n:match("LeftHand") then
                         pOffset = CFrame.new(-1.5, 0, 0)
                     elseif n:match("Leg") or n:match("Foot") then 
@@ -726,6 +715,56 @@ SAB.MouseButton1Click:Connect(function()
             if btn:IsA("TextButton") then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
         end
     end
+end)
+
+local AASB = Instance.new("TextButton", MF)
+AASB.Size = UDim2.new(0.5, 0, 0, 30)
+AASB.Position = UDim2.new(0.5, 0, 1, -90)
+AASB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AASB.Text = "Anti-Arm Steal"
+AASB.TextColor3 = Color3.new(1, 1, 1)
+AASB.Font = Enum.Font.Code
+AASB.TextSize = 11
+
+local isAntiStealing = false
+AASB.MouseButton1Click:Connect(function()
+    if isAntiStealing then return end
+    isAntiStealing = true
+    
+    AASB.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    AASB.Text = "Spamming..."
+    
+    task.spawn(function()
+        local char = LP.Character
+        local bp = LP:FindFirstChild("Backpack")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        
+        if char and bp and hum then
+            local knife = bp:FindFirstChild("MadMurdererKnife") or char:FindFirstChild("MadMurdererKnife")
+            
+            if knife then
+                local startTime = tick()
+                -- Quickly bounce parent between backpack and character to rapidly trigger equip/unequip events
+                while tick() - startTime < 0.5 do
+                    knife.Parent = char
+                    task.wait(0.02)
+                    knife.Parent = bp
+                    task.wait(0.02)
+                end
+                -- Ensure the tool ends up completely unequipped
+                hum:UnequipTools()
+                knife.Parent = bp
+            else
+                AASB.Text = "NO KNIFE!"
+                task.wait(1)
+            end
+        end
+        
+        -- Reset Button
+        AASB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        AASB.Text = "Anti-Arm Steal"
+        isAntiStealing = false
+    end)
 end)
 
 -- =====================================
