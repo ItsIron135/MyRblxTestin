@@ -631,6 +631,28 @@ APB.MouseButton1Click:Connect(function()
     end
 end)
 
+local AntiVoidActive = false
+local AVB = Instance.new("TextButton", MF)
+AVB.Size = UDim2.new(0.5, 0, 0, 30)
+AVB.Position = UDim2.new(0.5, 0, 1, -150)
+AVB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AVB.Text = "Anti-Void: OFF"
+AVB.TextColor3 = Color3.new(1, 1, 1)
+AVB.Font = Enum.Font.Code
+AVB.TextSize = 11
+
+AVB.MouseButton1Click:Connect(function()
+    AntiVoidActive = not AntiVoidActive
+    AVB.Text = AntiVoidActive and "Anti-Void: ON" or "Anti-Void: OFF"
+    AVB.BackgroundColor3 = AntiVoidActive and Color3.fromRGB(0, 150, 150) or Color3.fromRGB(60, 60, 60)
+    
+    if AntiVoidActive then
+        game.Workspace.FallenPartsDestroyHeight = -9e9
+    else
+        game.Workspace.FallenPartsDestroyHeight = -500
+    end
+end)
+
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
 -- =====================================
