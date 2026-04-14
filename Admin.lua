@@ -673,34 +673,6 @@ AVB.MouseButton1Click:Connect(function()
     end
 end)
 
--- LIVE COORDS TOGGLE & DISPLAY 
-local LiveCoordsActive = false
-local LCB = Instance.new("TextButton", MF)
-LCB.Size = UDim2.new(0.5, 0, 0, 30)
-LCB.Position = UDim2.new(0.5, 0, 1, -120)
-LCB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-LCB.Text = "Coords: OFF"
-LCB.TextColor3 = Color3.new(1, 1, 1)
-LCB.Font = Enum.Font.Code
-LCB.TextSize = 11
-
-local CoordsDisplay = Instance.new("TextLabel", MF)
-CoordsDisplay.Size = UDim2.new(0.5, 0, 0, 90)
-CoordsDisplay.Position = UDim2.new(0.5, 0, 1, -90)
-CoordsDisplay.BackgroundTransparency = 1
-CoordsDisplay.Text = ""
-CoordsDisplay.TextColor3 = Color3.fromRGB(50, 200, 100)
-CoordsDisplay.Font = Enum.Font.Code
-CoordsDisplay.TextSize = 13
-CoordsDisplay.Visible = false
-
-LCB.MouseButton1Click:Connect(function()
-    LiveCoordsActive = not LiveCoordsActive
-    LCB.Text = LiveCoordsActive and "Coords: ON" or "Coords: OFF"
-    LCB.BackgroundColor3 = LiveCoordsActive and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(60, 60, 60)
-    CoordsDisplay.Visible = LiveCoordsActive
-end)
-
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
 -- =====================================
@@ -747,17 +719,6 @@ end)
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local bp = LP:FindFirstChild("Backpack")
-
-    -- UPDATED LIVE COORDS LOGIC INSIDE EXISTING LOOP
-    if LiveCoordsActive then
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        if root then
-            local pos = root.Position
-            CoordsDisplay.Text = string.format("X: %.1f\nY: %.1f\nZ: %.1f", pos.X, pos.Y, pos.Z)
-        else
-            CoordsDisplay.Text = "Waiting..."
-        end
-    end
     
     if IsStackingActive and char and bp then
         local heldTool = char:FindFirstChildOfClass("Tool")
