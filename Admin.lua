@@ -33,6 +33,7 @@ local isShootingFood = false
 local InfSupernovaActive = false
 local AntiPickupActive = false
 local disabledParts = {}
+local antiPickupConnection = nil -- Added for optimization
 
 local StealArmActive = false
 local StealArmTargets = {}
@@ -49,6 +50,12 @@ local isFireAura = false
 local IsAntiLaser = false
 local AntiVoidActive = false
 local isAntiStealing = false
+
+local SKillActive = false
+local SKillTargets = {}
+local SKillLoops = {}
+local SKillTrackers = {}
+local ActiveSKillSwords = {}
 
 local UsedSwords = {}
 local LatestClone = nil
@@ -80,13 +87,12 @@ task.spawn(function()
     end
     
     if closestSpawn then
-        -- Set home right above the spawn block
         homeCFrame = closestSpawn.CFrame + Vector3.new(0, 4, 0)
     end
 end)
 
 ---------------------------------------------------------
--- CORE UI CREATION (KEPT ORIGINAL FORMAT)
+-- CORE UI CREATION
 ---------------------------------------------------------
 local SG = Instance.new("ScreenGui", PG)
 SG.Name = "StealerUI"
@@ -137,6 +143,19 @@ local function restoreTools()
         if part and part.Parent then part.CanTouch = true end
     end
     disabledParts = {}
+end
+
+-- OPTIMIZED ANTI-PICKUP LOGIC
+local function disableToolTouch(tool)
+    if not tool:IsA("Tool") then return end
+    for _, child in ipairs(tool:GetChildren()) do
+        if child:IsA("BasePart") and child:FindFirstChildWhichIsA("TouchTransmitter") then
+            if child.CanTouch then
+                child.CanTouch = false
+                table.insert(disabledParts, child)
+            end
+        end
+    end
 end
 
 local function consistentWeldTPGive(targetPlayer)
@@ -195,6 +214,81 @@ local function consistentWeldTPGive(targetPlayer)
     end)
 end
 
+local function attachSKill(targetPlayer, specificTool)
+    local targetChar = targetPlayer.Character
+    if not targetChar then return end
+
+    local char = LP.Character
+    local targetHRP = targetChar:WaitForChild("HumanoidRootPart", 5)
+
+    if specificTool and targetHRP then
+        local handle = specificTool:FindFirstChild("Handle")
+        local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
+
+        if handle and rightArm then
+            specificTool.RequiresHandle = true 
+            handle.Massless = true
+            handle.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
+
+            local connName = targetPlayer.Name
+            if SKillLoops[connName] then SKillLoops[connName]:Disconnect() end
+            
+            SKillLoops[connName] = RS.Heartbeat:Connect(function()
+                if specificTool.Parent == char and handle and targetHRP and targetHRP.Parent then
+                    local officialGrip = nil
+                    for _, joint in pairs(rightArm:GetChildren()) do
+                        if joint.Name == "RightGrip" and joint.Part1 == handle then
+                            officialGrip = joint
+                            break
+                        end
+                    end
+                    
+                    if officialGrip then
+                        local stickyPosition = targetHRP.CFrame
+                        officialGrip.C1 = stickyPosition:Inverse() * rightArm.CFrame * officialGrip.C0
+                    end
+                else
+                    if SKillLoops[connName] then SKillLoops[connName]:Disconnect() end
+                end
+            end)
+
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                for _, track in pairs(hum:GetPlayingAnimationTracks()) do
+                    if track.Name:lower():find("tool") or (track.Animation and tostring(track.Animation.AnimationId):find("507768375")) then
+                        track:Stop()
+                    end
+                end
+            end
+        end
+    end
+end
+
+local function stopSKill(targetPlayer)
+    local tName = targetPlayer.Name
+    SKillTargets[targetPlayer] = nil
+    
+    if SKillLoops[tName] then
+        SKillLoops[tName]:Disconnect()
+        SKillLoops[tName] = nil
+    end
+    if SKillTrackers[tName] then
+        SKillTrackers[tName]:Disconnect()
+        SKillTrackers[tName] = nil
+    end
+    
+    for sword, ply in pairs(ActiveSKillSwords) do
+        if ply == targetPlayer then
+            ActiveSKillSwords[sword] = nil
+            if sword and sword.Parent == LP.Character then
+                sword.Parent = LP:FindFirstChild("Backpack") or sword.Parent
+                local h = sword:FindFirstChild("Handle")
+                if h then h.Massless = false end
+            end
+        end
+    end
+end
+
 ---------------------------------------------------------
 -- UI BUTTONS & TRIGGERED LOOP LOGIC
 ---------------------------------------------------------
@@ -204,20 +298,25 @@ CB.MouseButton1Click:Connect(function()
         desyncActive = false
         if desyncLoop then desyncLoop:Disconnect() end
     end
+    if antiPickupConnection then
+        antiPickupConnection:Disconnect()
+        antiPickupConnection = nil
+    end
     AntiPickupActive = false
     isGodMode = false
     isFireAura = false
+    for t, _ in pairs(SKillTargets) do stopSKill(t) end
     restoreTools()
     SG:Destroy() 
 end)
 
 -- =====================================
--- TOP BUTTONS (NOW SPLIT)
+-- TOP BUTTONS
 -- =====================================
 local TVB = Instance.new("TextButton", MF)
 TVB.Size = UDim2.new(0.5, 0, 0, 30)
 TVB.Position = UDim2.new(0, 0, 1, -300)
-TVB.BackgroundColor3 = Color3.fromRGB(80, 40, 80) -- Purple hue for void
+TVB.BackgroundColor3 = Color3.fromRGB(80, 40, 80)
 TVB.Text = "TP To Void"
 TVB.TextColor3 = Color3.new(1, 1, 1)
 TVB.Font = Enum.Font.Code
@@ -234,7 +333,7 @@ end)
 local THB = Instance.new("TextButton", MF)
 THB.Size = UDim2.new(0.5, 0, 0, 30)
 THB.Position = UDim2.new(0.5, 0, 1, -300)
-THB.BackgroundColor3 = Color3.fromRGB(40, 80, 40) -- Dark Green for Home
+THB.BackgroundColor3 = Color3.fromRGB(40, 80, 40)
 THB.Text = "TP Home"
 THB.TextColor3 = Color3.new(1, 1, 1)
 THB.Font = Enum.Font.Code
@@ -266,7 +365,7 @@ end)
 local FLB = Instance.new("TextButton", MF)
 FLB.Size = UDim2.new(0.5, 0, 0, 30)
 FLB.Position = UDim2.new(0, 0, 1, -270)
-FLB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FLB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 FLB.Text = "Fly: OFF"
 FLB.TextColor3 = Color3.new(1, 1, 1)
 FLB.Font = Enum.Font.Code
@@ -275,7 +374,7 @@ FLB.TextSize = 11
 FLB.MouseButton1Click:Connect(function()
     Flying = not Flying
     FLB.Text = Flying and "Fly: ON" or "Fly: OFF"
-    FLB.BackgroundColor3 = Flying and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(60, 60, 60)
+    FLB.BackgroundColor3 = Flying and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(50, 50, 50)
     
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -313,7 +412,7 @@ end)
 local GDGB = Instance.new("TextButton", MF)
 GDGB.Size = UDim2.new(0.5, 0, 0, 30)
 GDGB.Position = UDim2.new(0, 0, 1, -240)
-GDGB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+GDGB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 GDGB.Text = "Give Gear: OFF"
 GDGB.TextColor3 = Color3.new(1, 1, 1)
 GDGB.Font = Enum.Font.Code
@@ -322,13 +421,13 @@ GDGB.TextSize = 11
 GDGB.MouseButton1Click:Connect(function()
     GiveDroppedGearActive = not GiveDroppedGearActive
     GDGB.Text = GiveDroppedGearActive and "Give Gear: ON" or "Give Gear: OFF"
-    GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(60, 60, 60)
+    GDGB.BackgroundColor3 = GiveDroppedGearActive and Color3.fromRGB(150, 100, 50) or Color3.fromRGB(50, 50, 50)
 end)
 
 local PDB = Instance.new("TextButton", MF)
 PDB.Size = UDim2.new(0.5, 0, 0, 30)
 PDB.Position = UDim2.new(0, 0, 1, -210)
-PDB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+PDB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 PDB.Text = "Perm Desync: OFF"
 PDB.TextColor3 = Color3.new(1, 1, 1)
 PDB.Font = Enum.Font.Code
@@ -337,7 +436,7 @@ PDB.TextSize = 11
 PDB.MouseButton1Click:Connect(function()
     desyncActive = not desyncActive
     PDB.Text = desyncActive and "Perm Desync: ON" or "Perm Desync: OFF"
-    PDB.BackgroundColor3 = desyncActive and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(60, 60, 60)
+    PDB.BackgroundColor3 = desyncActive and Color3.fromRGB(0, 120, 200) or Color3.fromRGB(50, 50, 50)
     
     local char = LP.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -454,7 +553,7 @@ end)
 local GTB = Instance.new("TextButton", MF)
 GTB.Size = UDim2.new(0.5, 0, 0, 30)
 GTB.Position = UDim2.new(0, 0, 1, -180)
-GTB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+GTB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 GTB.Text = "Ghost Touch: OFF"
 GTB.TextColor3 = Color3.new(1, 1, 1)
 GTB.Font = Enum.Font.Code
@@ -463,13 +562,13 @@ GTB.TextSize = 11
 GTB.MouseButton1Click:Connect(function()
     GhostTouchActive = not GhostTouchActive
     GTB.Text = GhostTouchActive and "Ghost Touch: ON" or "Ghost Touch: OFF"
-    GTB.BackgroundColor3 = GhostTouchActive and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(60, 60, 60)
+    GTB.BackgroundColor3 = GhostTouchActive and Color3.fromRGB(200, 100, 0) or Color3.fromRGB(50, 50, 50)
 end)
 
 local STB = Instance.new("TextButton", MF)
 STB.Size = UDim2.new(0.5, 0, 0, 30)
 STB.Position = UDim2.new(0, 0, 1, -150)
-STB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+STB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 STB.Text = "Inf Stack: OFF"
 STB.TextColor3 = Color3.new(1, 1, 1)
 STB.Font = Enum.Font.Code
@@ -478,7 +577,7 @@ STB.TextSize = 11
 STB.MouseButton1Click:Connect(function()
     IsStackingActive = not IsStackingActive
     STB.Text = IsStackingActive and "Inf Stack: ON" or "Inf Stack: OFF"
-    STB.BackgroundColor3 = IsStackingActive and Color3.fromRGB(120, 50, 120) or Color3.fromRGB(70, 70, 70)
+    STB.BackgroundColor3 = IsStackingActive and Color3.fromRGB(120, 50, 120) or Color3.fromRGB(50, 50, 50)
     
     if IsStackingActive then
         local bp = LP:FindFirstChild("Backpack")
@@ -498,7 +597,7 @@ end)
 local GAB = Instance.new("TextButton", MF)
 GAB.Size = UDim2.new(0.5, 0, 0, 30)
 GAB.Position = UDim2.new(0, 0, 1, -120)
-GAB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+GAB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 GAB.Text = "Give All: OFF"
 GAB.TextColor3 = Color3.new(1, 1, 1)
 GAB.Font = Enum.Font.Code
@@ -507,14 +606,13 @@ GAB.TextSize = 11
 GAB.MouseButton1Click:Connect(function()
     GiveAllActive = not GiveAllActive
     GAB.Text = GiveAllActive and "Give All: ON" or "Give All: OFF"
-    GAB.BackgroundColor3 = GiveAllActive and Color3.fromRGB(50, 100, 150) or Color3.fromRGB(70, 70, 70)
+    GAB.BackgroundColor3 = GiveAllActive and Color3.fromRGB(50, 100, 150) or Color3.fromRGB(50, 50, 50)
 end)
 
--- *OPTIMIZED* GOD MODE BUTTON
 local GDB = Instance.new("TextButton", MF)
 GDB.Size = UDim2.new(0.5, 0, 0, 30) 
 GDB.Position = UDim2.new(0, 0, 1, -90)
-GDB.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+GDB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 GDB.Text = "God Mode: OFF"
 GDB.TextColor3 = Color3.new(1, 1, 1)
 GDB.Font = Enum.Font.Code
@@ -523,7 +621,7 @@ GDB.TextSize = 11
 GDB.MouseButton1Click:Connect(function()
     isGodMode = not isGodMode
     GDB.Text = isGodMode and "God Mode: ON" or "God Mode: OFF"
-    GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
+    GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(50, 50, 50)
     
     if isGodMode then
         task.spawn(function()
@@ -545,7 +643,7 @@ GDB.MouseButton1Click:Connect(function()
                         for _, s in pairs(swords) do s.Parent = bp end 
                         task.wait(0.01) 
                     else
-                        task.wait(0.1) -- Prevents crash if swords go missing
+                        task.wait(0.1) 
                     end 
                 else
                     task.wait(0.1)
@@ -553,7 +651,6 @@ GDB.MouseButton1Click:Connect(function()
             end 
         end)
     else
-        -- Clean up unequipping when off
         local char = LP.Character
         local bp = LP:FindFirstChild("Backpack")
         if char and bp then
@@ -569,7 +666,7 @@ end)
 local ALB = Instance.new("TextButton", MF)
 ALB.Size = UDim2.new(0.5, 0, 0, 30) 
 ALB.Position = UDim2.new(0, 0, 1, -60)
-ALB.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+ALB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ALB.Text = "ANTI-LASER: OFF"
 ALB.TextColor3 = Color3.new(1, 1, 1)
 ALB.Font = Enum.Font.Code
@@ -578,13 +675,13 @@ ALB.TextSize = 11
 ALB.MouseButton1Click:Connect(function()
     IsAntiLaser = not IsAntiLaser
     ALB.Text = IsAntiLaser and "ANTI-LASER: ON" or "ANTI-LASER: OFF"
-    ALB.BackgroundColor3 = IsAntiLaser and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(45, 45, 45)
+    ALB.BackgroundColor3 = IsAntiLaser and Color3.fromRGB(40, 100, 40) or Color3.fromRGB(50, 50, 50)
 end)
 
 local RSB = Instance.new("TextButton", MF)
 RSB.Size = UDim2.new(0.5, 0, 0, 30)
 RSB.Position = UDim2.new(0, 0, 1, -30) 
-RSB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+RSB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 RSB.Text = "R-Spam: OFF"
 RSB.TextColor3 = Color3.new(1, 1, 1)
 RSB.Font = Enum.Font.Code
@@ -593,7 +690,7 @@ RSB.TextSize = 11
 RSB.MouseButton1Click:Connect(function()
     RocketSpamActive = not RocketSpamActive
     RSB.Text = RocketSpamActive and "R-Spam: ON" or "R-Spam: OFF"
-    RSB.BackgroundColor3 = RocketSpamActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(60, 60, 60)
+    RSB.BackgroundColor3 = RocketSpamActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(50, 50, 50)
     if not RocketSpamActive then 
         RocketTargets = {} 
         for _, btn in pairs(SF:GetChildren()) do
@@ -608,7 +705,7 @@ end)
 local NCB = Instance.new("TextButton", MF)
 NCB.Size = UDim2.new(0.5, 0, 0, 30)
 NCB.Position = UDim2.new(0.5, 0, 1, -270)
-NCB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+NCB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 NCB.Text = "Noclip: OFF"
 NCB.TextColor3 = Color3.new(1, 1, 1)
 NCB.Font = Enum.Font.Code
@@ -617,22 +714,22 @@ NCB.TextSize = 11
 NCB.MouseButton1Click:Connect(function()
     NoclipActive = not NoclipActive
     NCB.Text = NoclipActive and "Noclip: ON" or "Noclip: OFF"
-    NCB.BackgroundColor3 = NoclipActive and Color3.fromRGB(150, 50, 150) or Color3.fromRGB(60, 60, 60)
+    NCB.BackgroundColor3 = NoclipActive and Color3.fromRGB(150, 50, 150) or Color3.fromRGB(50, 50, 50)
 end)
 
 local ACB = Instance.new("TextButton", MF)
 ACB.Size = UDim2.new(0.5, 0, 0, 30)
 ACB.Position = UDim2.new(0.5, 0, 1, -240)
-ACB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ACB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ACB.Text = "Auto Chud: OFF"
 ACB.TextColor3 = Color3.new(1, 1, 1)
-ACB.Font = Enum.Font.Code
+    ACB.Font = Enum.Font.Code
 ACB.TextSize = 11
 
 ACB.MouseButton1Click:Connect(function()
     AutoChudActive = not AutoChudActive
     ACB.Text = AutoChudActive and "Auto Chud: ON" or "Auto Chud: OFF"
-    ACB.BackgroundColor3 = AutoChudActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(60, 60, 60)
+    ACB.BackgroundColor3 = AutoChudActive and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
     if not AutoChudActive then 
         AutoChudTargets = {} 
         for _, btn in pairs(SF:GetChildren()) do
@@ -644,7 +741,7 @@ end)
 local ISB = Instance.new("TextButton", MF)
 ISB.Size = UDim2.new(0.5, 0, 0, 30)
 ISB.Position = UDim2.new(0.5, 0, 1, -210)
-ISB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ISB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ISB.Text = "Supernova: OFF"
 ISB.TextColor3 = Color3.new(1, 1, 1)
 ISB.Font = Enum.Font.Code
@@ -653,24 +750,39 @@ ISB.TextSize = 11
 ISB.MouseButton1Click:Connect(function()
     InfSupernovaActive = not InfSupernovaActive
     ISB.Text = InfSupernovaActive and "Supernova: ON" or "Supernova: OFF"
-    ISB.BackgroundColor3 = InfSupernovaActive and Color3.fromRGB(200, 100, 50) or Color3.fromRGB(60, 60, 60)
+    ISB.BackgroundColor3 = InfSupernovaActive and Color3.fromRGB(200, 100, 50) or Color3.fromRGB(50, 50, 50)
 end)
 
 local APB = Instance.new("TextButton", MF)
 APB.Size = UDim2.new(0.5, 0, 0, 30)
 APB.Position = UDim2.new(0.5, 0, 1, -180)
-APB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+APB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 APB.Text = "Anti-Pickup: OFF"
 APB.TextColor3 = Color3.new(1, 1, 1)
 APB.Font = Enum.Font.Code
 APB.TextSize = 11
 
+-- EVENT-DRIVEN ANTI-PICKUP OPTIMIZATION
 APB.MouseButton1Click:Connect(function()
     AntiPickupActive = not AntiPickupActive
     APB.Text = AntiPickupActive and "Anti-Pickup: ON" or "Anti-Pickup: OFF"
-    APB.BackgroundColor3 = AntiPickupActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(60, 60, 60)
+    APB.BackgroundColor3 = AntiPickupActive and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(50, 50, 50)
     
-    if not AntiPickupActive then
+    if AntiPickupActive then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool") then disableToolTouch(obj) end
+        end
+        antiPickupConnection = workspace.DescendantAdded:Connect(function(obj)
+            if AntiPickupActive and obj:IsA("Tool") then
+                task.wait(0.1) 
+                disableToolTouch(obj)
+            end
+        end)
+    else
+        if antiPickupConnection then
+            antiPickupConnection:Disconnect()
+            antiPickupConnection = nil
+        end
         restoreTools()
     end
 end)
@@ -678,7 +790,7 @@ end)
 local AVB = Instance.new("TextButton", MF)
 AVB.Size = UDim2.new(0.5, 0, 0, 30)
 AVB.Position = UDim2.new(0.5, 0, 1, -150)
-AVB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AVB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 AVB.Text = "Anti-Void: OFF"
 AVB.TextColor3 = Color3.new(1, 1, 1)
 AVB.Font = Enum.Font.Code
@@ -687,7 +799,7 @@ AVB.TextSize = 11
 AVB.MouseButton1Click:Connect(function()
     AntiVoidActive = not AntiVoidActive
     AVB.Text = AntiVoidActive and "Anti-Void: ON" or "Anti-Void: OFF"
-    AVB.BackgroundColor3 = AntiVoidActive and Color3.fromRGB(0, 150, 150) or Color3.fromRGB(60, 60, 60)
+    AVB.BackgroundColor3 = AntiVoidActive and Color3.fromRGB(0, 150, 150) or Color3.fromRGB(50, 50, 50)
     
     if AntiVoidActive then
         game.Workspace.FallenPartsDestroyHeight = -9e9
@@ -699,7 +811,7 @@ end)
 local SAB = Instance.new("TextButton", MF)
 SAB.Size = UDim2.new(0.5, 0, 0, 30)
 SAB.Position = UDim2.new(0.5, 0, 1, -120)
-SAB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+SAB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 SAB.Text = "Steal Arm: OFF"
 SAB.TextColor3 = Color3.new(1, 1, 1)
 SAB.Font = Enum.Font.Code
@@ -708,7 +820,7 @@ SAB.TextSize = 11
 SAB.MouseButton1Click:Connect(function()
     StealArmActive = not StealArmActive
     SAB.Text = StealArmActive and "Steal Arm: ON" or "Steal Arm: OFF"
-    SAB.BackgroundColor3 = StealArmActive and Color3.fromRGB(180, 120, 0) or Color3.fromRGB(60, 60, 60)
+    SAB.BackgroundColor3 = StealArmActive and Color3.fromRGB(180, 120, 0) or Color3.fromRGB(50, 50, 50)
     
     if not StealArmActive then
         StealArmTargets = {}
@@ -721,7 +833,7 @@ end)
 local AASB = Instance.new("TextButton", MF)
 AASB.Size = UDim2.new(0.5, 0, 0, 30)
 AASB.Position = UDim2.new(0.5, 0, 1, -90)
-AASB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+AASB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 AASB.Text = "Anti-Arm Steal"
 AASB.TextColor3 = Color3.new(1, 1, 1)
 AASB.Font = Enum.Font.Code
@@ -780,17 +892,16 @@ AASB.MouseButton1Click:Connect(function()
         end
         
         task.wait(1.5)
-        AASB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        AASB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
         AASB.Text = "Anti-Arm Steal"
         isAntiStealing = false
     end)
 end)
 
--- NEW FIRE AURA BUTTON
 local FAB = Instance.new("TextButton", MF)
 FAB.Size = UDim2.new(0.5, 0, 0, 30)
 FAB.Position = UDim2.new(0.5, 0, 1, -60)
-FAB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FAB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 FAB.Text = "Fire Aura: OFF"
 FAB.TextColor3 = Color3.new(1, 1, 1)
 FAB.Font = Enum.Font.Code
@@ -799,7 +910,7 @@ FAB.TextSize = 11
 FAB.MouseButton1Click:Connect(function()
     isFireAura = not isFireAura
     FAB.Text = isFireAura and "Fire Aura: ON" or "Fire Aura: OFF"
-    FAB.BackgroundColor3 = isFireAura and Color3.fromRGB(200, 80, 20) or Color3.fromRGB(60, 60, 60)
+    FAB.BackgroundColor3 = isFireAura and Color3.fromRGB(200, 80, 20) or Color3.fromRGB(50, 50, 50)
 
     if isFireAura then
         task.spawn(function()
@@ -817,11 +928,11 @@ FAB.MouseButton1Click:Connect(function()
                     end
                     if #swords > 0 then
                         for _, s in pairs(swords) do s.Parent = char end
-                        task.wait(0.01)
+                        task.wait(0.02)
                         for _, s in pairs(swords) do s.Parent = bp end
-                        task.wait(0.01)
+                        task.wait(0.02)
                     else
-                        task.wait(0.1) -- Prevents crash if swords go missing
+                        task.wait(0.2) 
                     end
                 else
                     task.wait(0.1)
@@ -829,7 +940,6 @@ FAB.MouseButton1Click:Connect(function()
             end
         end)
     else
-        -- Clean up unequipping when off
         local char = LP.Character
         local bp = LP:FindFirstChild("Backpack")
         if char and bp then
@@ -842,6 +952,30 @@ FAB.MouseButton1Click:Connect(function()
     end
 end)
 
+-- S-KILL BUTTON
+local SKB = Instance.new("TextButton", MF)
+SKB.Size = UDim2.new(0.5, 0, 0, 30)
+SKB.Position = UDim2.new(0.5, 0, 1, -30)
+SKB.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SKB.Text = "S-Kill: OFF"
+SKB.TextColor3 = Color3.new(1, 1, 1)
+SKB.Font = Enum.Font.Code
+SKB.TextSize = 11
+
+SKB.MouseButton1Click:Connect(function()
+    SKillActive = not SKillActive
+    SKB.Text = SKillActive and "S-Kill: ON" or "S-Kill: OFF"
+    SKB.BackgroundColor3 = SKillActive and Color3.fromRGB(0, 150, 200) or Color3.fromRGB(50, 50, 50)
+    
+    if not SKillActive then
+        for t, _ in pairs(SKillTargets) do
+            stopSKill(t)
+        end
+        for _, btn in pairs(SF:GetChildren()) do
+            if btn:IsA("TextButton") then btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) end
+        end
+    end
+end)
 
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
@@ -973,26 +1107,6 @@ task.spawn(function()
     end
 end)
 
-task.spawn(function()
-    while true do
-        if AntiPickupActive then
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("Tool") then
-                    for _, child in ipairs(obj:GetChildren()) do
-                        if child:IsA("BasePart") and child:FindFirstChildWhichIsA("TouchTransmitter") then
-                            if child.CanTouch == true then
-                                child.CanTouch = false
-                                table.insert(disabledParts, child)
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
-
 RS.Heartbeat:Connect(function()
     local char = LP.Character
     local bp = LP:FindFirstChild("Backpack")
@@ -1019,17 +1133,10 @@ RS.Heartbeat:Connect(function()
         local target = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
         
         if target and root then
-            for _, item in ipairs(target:GetDescendants()) do
-                if (item.Name == "Handle" or item:IsA("TouchInterest")) then
-                    local p = item:IsA("TouchInterest") and item.Parent or item
-                    if p:IsA("BasePart") then
-                        local old = p.CFrame
-                        p.CFrame = root.CFrame
-                        firetouchinterest(root, p, 0)
-                        firetouchinterest(root, p, 1)
-                        p.CFrame = old
-                    end
-                end
+            local cloneRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")
+            if cloneRoot then
+                -- Left-shift logic implemented from previous adjustment
+                cloneRoot.CFrame = root.CFrame * CFrame.new(-1.2, 0, 2)
             end
         end
     end
@@ -1094,6 +1201,53 @@ local function E(t, btn)
         return 
     end
 
+    -- S-KILL CLICK LOGIC (Now falls through to R-Kill)
+    if SKillActive then
+        if SKillTargets[t] then
+            stopSKill(t)
+            btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+            return -- We return here so we don't accidentally R-Kill when turning off S-Kill!
+        else
+            local bp = LP:FindFirstChild("Backpack")
+            local char = LP.Character
+            local sword = nil
+            
+            local allSwords = {}
+            if char then for _, obj in pairs(char:GetChildren()) do if obj.Name == "BoneSword" then table.insert(allSwords, obj) end end end
+            if bp then for _, obj in pairs(bp:GetChildren()) do if obj.Name == "BoneSword" then table.insert(allSwords, obj) end end end
+            
+            for _, s in pairs(allSwords) do
+                if not ActiveSKillSwords[s] then sword = s; break end
+            end
+            
+            if sword then
+                SKillTargets[t] = true
+                ActiveSKillSwords[sword] = t
+                sword.Parent = char 
+                attachSKill(t, sword)
+                
+                SKillTrackers[t.Name] = t.CharacterAdded:Connect(function(newChar)
+                    if sword and sword.Parent == char then
+                        attachSKill(t, sword)
+                    end
+                end)
+                btn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+            else
+                local old = btn.Text
+                btn.Text = "NO BONESWORD"
+                btn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+                task.delay(1, function() 
+                    if btn and btn.Parent and not SKillTargets[t] then 
+                        btn.Text = old 
+                        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50) 
+                    end 
+                end)
+                return -- Stop if you don't have a sword
+            end
+        end
+        -- NO RETURN HERE! This lets execution continue downward to R-Kill.
+    end
+
     local c = LP.Character
     local h = c and c:FindFirstChild("Humanoid")
     local hrp = c and c:FindFirstChild("HumanoidRootPart")
@@ -1128,7 +1282,11 @@ local function E(t, btn)
         task.delay(1, function()
             if btn and btn.Parent then
                 btn.Text = oldText
-                btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                if SKillActive and SKillTargets[t] then
+                    btn.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+                else
+                    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+                end
             end
         end)
         return 
@@ -1138,10 +1296,9 @@ local function E(t, btn)
     local originalCFrame = hrp.CFrame 
 
     UsedSwords[sS] = true
-    h:UnequipTools()
-    task.wait(0.05)
-    h:EquipTool(eS)
-    task.wait(0.05)
+    
+    -- Removed h:UnequipTools() so S-Kill doesn't break!
+    eS.Parent = c
     sS.Parent = c
 
     local startTime = tick()
@@ -1176,6 +1333,8 @@ local function R()
                 b.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
             elseif StealArmActive and StealArmTargets[p] then
                 b.BackgroundColor3 = Color3.fromRGB(180, 120, 0)
+            elseif SKillActive and SKillTargets[p] then
+                b.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
             else
                 b.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
             end
