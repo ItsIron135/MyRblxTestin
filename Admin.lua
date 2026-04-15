@@ -45,6 +45,7 @@ local GhostTouchActive = false
 local IsStackingActive = false
 local GiveAllActive = false
 local isGodMode = false
+local isFireAura = false
 local IsAntiLaser = false
 local AntiVoidActive = false
 local isAntiStealing = false
@@ -204,6 +205,8 @@ CB.MouseButton1Click:Connect(function()
         if desyncLoop then desyncLoop:Disconnect() end
     end
     AntiPickupActive = false
+    isGodMode = false
+    isFireAura = false
     restoreTools()
     SG:Destroy() 
 end)
@@ -257,7 +260,9 @@ THB.MouseButton1Click:Connect(function()
     end
 end)
 
+-- =====================================
 -- COLUMN 1 BUTTONS
+-- =====================================
 local FLB = Instance.new("TextButton", MF)
 FLB.Size = UDim2.new(0.5, 0, 0, 30)
 FLB.Position = UDim2.new(0, 0, 1, -270)
@@ -357,7 +362,6 @@ PDB.MouseButton1Click:Connect(function()
             end
         end
 
-        -- FIXED DT SPEED
         desyncLoop = RS.Heartbeat:Connect(function(dt)
             if not desyncActive then return end
             
@@ -376,7 +380,6 @@ PDB.MouseButton1Click:Connect(function()
             local basePos = root.Position + ghostOffset
             local ghostRot = lookCF.Rotation
             
-            -- STEAL ARM DESYNC OVERRIDE LOGIC
             if StealArmActive then
                 local stealTargetChar = nil
                 for tPlayer, isActive in pairs(StealArmTargets) do
@@ -396,7 +399,6 @@ PDB.MouseButton1Click:Connect(function()
                 end
             end
             
-            -- RIG C-FRAMING WITH EQUIP POSE
             for _, part in pairs(char:GetChildren()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                     local n = part.Name
@@ -508,7 +510,7 @@ GAB.MouseButton1Click:Connect(function()
     GAB.BackgroundColor3 = GiveAllActive and Color3.fromRGB(50, 100, 150) or Color3.fromRGB(70, 70, 70)
 end)
 
-local isGodMode = false
+-- *OPTIMIZED* GOD MODE BUTTON
 local GDB = Instance.new("TextButton", MF)
 GDB.Size = UDim2.new(0.5, 0, 0, 30) 
 GDB.Position = UDim2.new(0, 0, 1, -90)
@@ -522,10 +524,47 @@ GDB.MouseButton1Click:Connect(function()
     isGodMode = not isGodMode
     GDB.Text = isGodMode and "God Mode: ON" or "God Mode: OFF"
     GDB.BackgroundColor3 = isGodMode and Color3.fromRGB(50, 150, 50) or Color3.fromRGB(70, 70, 70)
+    
+    if isGodMode then
+        task.spawn(function()
+            local swordName = "OverseerwrathSword"
+            while isGodMode do 
+                local char = LP.Character 
+                local bp = LP:FindFirstChild("Backpack") 
+                if char and bp then 
+                    local swords = {} 
+                    for _, t in pairs(char:GetChildren()) do 
+                        if t.Name == swordName then table.insert(swords, t) end 
+                    end 
+                    for _, t in pairs(bp:GetChildren()) do 
+                        if t.Name == swordName and #swords < 10 then table.insert(swords, t) end 
+                    end 
+                    if #swords > 0 then 
+                        for _, s in pairs(swords) do s.Parent = char end 
+                        task.wait(0.01) 
+                        for _, s in pairs(swords) do s.Parent = bp end 
+                        task.wait(0.01) 
+                    else
+                        task.wait(0.1) -- Prevents crash if swords go missing
+                    end 
+                else
+                    task.wait(0.1)
+                end 
+            end 
+        end)
+    else
+        -- Clean up unequipping when off
+        local char = LP.Character
+        local bp = LP:FindFirstChild("Backpack")
+        if char and bp then
+            for _, t in pairs(char:GetChildren()) do
+                if t.Name == "OverseerwrathSword" then
+                    t.Parent = bp
+                end
+            end
+        end
+    end
 end)
-
-local IsAntiLaser = false
-local laserNames = {["Rain"] = true, ["Beam"] = true, ["Effect"] = true, ["StarShard"] = true, ["CrimsonPillar"] = true, ["Part"] = true}
 
 local ALB = Instance.new("TextButton", MF)
 ALB.Size = UDim2.new(0.5, 0, 0, 30) 
@@ -564,7 +603,7 @@ RSB.MouseButton1Click:Connect(function()
 end)
 
 -- =====================================
--- COLUMN 2 (NEW BUTTONS)
+-- COLUMN 2 BUTTONS
 -- =====================================
 local NCB = Instance.new("TextButton", MF)
 NCB.Size = UDim2.new(0.5, 0, 0, 30)
@@ -679,7 +718,6 @@ SAB.MouseButton1Click:Connect(function()
     end
 end)
 
--- NUCLEAR LEFT ARM DROP LOGIC
 local AASB = Instance.new("TextButton", MF)
 AASB.Size = UDim2.new(0.5, 0, 0, 30)
 AASB.Position = UDim2.new(0.5, 0, 1, -90)
@@ -689,7 +727,6 @@ AASB.TextColor3 = Color3.new(1, 1, 1)
 AASB.Font = Enum.Font.Code
 AASB.TextSize = 11
 
-local isAntiStealing = false
 AASB.MouseButton1Click:Connect(function()
     if isAntiStealing then return end
     isAntiStealing = true
@@ -748,6 +785,63 @@ AASB.MouseButton1Click:Connect(function()
         isAntiStealing = false
     end)
 end)
+
+-- NEW FIRE AURA BUTTON
+local FAB = Instance.new("TextButton", MF)
+FAB.Size = UDim2.new(0.5, 0, 0, 30)
+FAB.Position = UDim2.new(0.5, 0, 1, -60)
+FAB.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+FAB.Text = "Fire Aura: OFF"
+FAB.TextColor3 = Color3.new(1, 1, 1)
+FAB.Font = Enum.Font.Code
+FAB.TextSize = 11
+
+FAB.MouseButton1Click:Connect(function()
+    isFireAura = not isFireAura
+    FAB.Text = isFireAura and "Fire Aura: ON" or "Fire Aura: OFF"
+    FAB.BackgroundColor3 = isFireAura and Color3.fromRGB(200, 80, 20) or Color3.fromRGB(60, 60, 60)
+
+    if isFireAura then
+        task.spawn(function()
+            local swordName = "RedcliffRogueSword"
+            while isFireAura do
+                local char = LP.Character
+                local bp = LP:FindFirstChild("Backpack")
+                if char and bp then
+                    local swords = {}
+                    for _, t in pairs(char:GetChildren()) do
+                        if t.Name == swordName then table.insert(swords, t) end
+                    end
+                    for _, t in pairs(bp:GetChildren()) do
+                        if t.Name == swordName and #swords < 10 then table.insert(swords, t) end
+                    end
+                    if #swords > 0 then
+                        for _, s in pairs(swords) do s.Parent = char end
+                        task.wait(0.01)
+                        for _, s in pairs(swords) do s.Parent = bp end
+                        task.wait(0.01)
+                    else
+                        task.wait(0.1) -- Prevents crash if swords go missing
+                    end
+                else
+                    task.wait(0.1)
+                end
+            end
+        end)
+    else
+        -- Clean up unequipping when off
+        local char = LP.Character
+        local bp = LP:FindFirstChild("Backpack")
+        if char and bp then
+            for _, t in pairs(char:GetChildren()) do
+                if t.Name == "RedcliffRogueSword" then
+                    t.Parent = bp
+                end
+            end
+        end
+    end
+end)
+
 
 -- =====================================
 -- WORLD EVENTS & BACKGROUND TASKS
@@ -897,32 +991,6 @@ task.spawn(function()
         end
         task.wait(0.5)
     end
-end)
-
-task.spawn(function() 
-    local swordName = "OverseerwrathSword"
-    while true do 
-        if isGodMode then 
-            local char = LP.Character 
-            local bp = LP:FindFirstChild("Backpack") 
-            if char and bp then 
-                local swords = {} 
-                for _, t in pairs(char:GetChildren()) do 
-                    if t.Name == swordName then table.insert(swords, t) end 
-                end 
-                for _, t in pairs(bp:GetChildren()) do 
-                    if t.Name == swordName and #swords < 10 then table.insert(swords, t) end 
-                end 
-                if #swords > 0 then 
-                    for _, s in pairs(swords) do s.Parent = char end 
-                    task.wait(0.01) 
-                    for _, s in pairs(swords) do s.Parent = bp end 
-                    task.wait(0.01) 
-                end 
-            end 
-        end 
-        task.wait(0.01) 
-    end 
 end)
 
 RS.Heartbeat:Connect(function()
