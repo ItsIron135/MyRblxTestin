@@ -27,7 +27,7 @@ local SpawnCloneActive, SpawnCloneTargets = false, {}
 local AutoChudActive, isShootingFood, AutoChudTargets = false, false, {}
 
 local SKillActive, SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords = false, {}, {}, {}, {}
-local IKillActive, IKillTargets, IKillLoops, IKillTrackers, ActiveIKillSwords = false, {}, {}, {}, {}
+local VoidKillActive, VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords = false, {}, {}, {}, {}
 local StealArmActive, StealArmTargets = false, {}
 
 local AntiPickupActive, hiddenTools, antiPickupConnection = false, {}, nil
@@ -44,26 +44,27 @@ local SG = Instance.new("ScreenGui", PG)
 SG.Name, SG.ResetOnSpawn = "StealerUI", false
 
 local MF = Instance.new("Frame", SG)
-MF.Size, MF.Position = UDim2.new(0, 240, 0, 520), UDim2.new(0.85, -120, 0.5, -200)
-MF.BackgroundColor3, MF.Active, MF.Draggable = Color3.fromRGB(35, 35, 35), true, true
+MF.Size, MF.Position, MF.BackgroundColor3, MF.Active, MF.Draggable, MF.BorderSizePixel = UDim2.new(0, 240, 0, 520), UDim2.new(0.85, -120, 0.5, -200), Color3.fromRGB(35, 35, 35), true, true, 0
 
 local T = Instance.new("TextLabel", MF)
-T.Size, T.BackgroundTransparency = UDim2.new(1, -30, 0, 30), 1
-T.Text, T.TextColor3, T.Font, T.TextSize = "Admin Panel", Color3.new(0.9, 0.9, 0.9), Enum.Font.Code, 14
+T.Size, T.BackgroundTransparency, T.Text, T.TextColor3, T.Font, T.TextSize = UDim2.new(1, -30, 0, 30), 1, "Admin Panel", Color3.new(0.9, 0.9, 0.9), Enum.Font.Code, 14
 
 local CB = Instance.new("TextButton", MF)
-CB.Size, CB.Position = UDim2.new(0, 30, 0, 30), UDim2.new(1, -30, 0, 0)
-CB.BackgroundColor3, CB.Text, CB.TextColor3 = Color3.fromRGB(150, 50, 50), "X", Color3.new(1, 1, 1)
+CB.Size, CB.Position, CB.BackgroundColor3, CB.Text, CB.TextColor3 = UDim2.new(0, 30, 0, 30), UDim2.new(1, -30, 0, 0), Color3.fromRGB(150, 50, 50), "X", Color3.new(1, 1, 1)
 
 local SF = Instance.new("ScrollingFrame", MF)
-SF.Size, SF.Position = UDim2.new(1, 0, 1, -300), UDim2.new(0, 0, 0, 30)
-SF.BackgroundTransparency, SF.ScrollBarThickness, SF.ScrollingEnabled, SF.Active = 1, 6, true, true
+SF.Size, SF.Position, SF.BackgroundTransparency, SF.ScrollBarThickness, SF.ScrollingEnabled, SF.Active = UDim2.new(1, 0, 1, -300), UDim2.new(0, 0, 0, 30), 1, 6, true, true
 
 local UIList = Instance.new("UIListLayout", SF)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
     SF.CanvasSize = UDim2.new(0, 0, 0, UIList.AbsoluteContentSize.Y)
 end)
+
+local AutoLabel = Instance.new("TextLabel", SG)
+AutoLabel.Size, AutoLabel.Position, AutoLabel.BackgroundColor3, AutoLabel.TextColor3 = UDim2.new(0, 220, 0, 40), UDim2.new(0.5, -110, 0.1, 0), Color3.fromRGB(30, 30, 30), Color3.fromRGB(200, 70, 70)
+AutoLabel.Text, AutoLabel.TextScaled, AutoLabel.Font, AutoLabel.Visible = "Auto Rocket: OFF", true, Enum.Font.SourceSansBold, false
+Instance.new("UICorner", AutoLabel)
 
 ---------------------------------------------------------
 -- HELPER FUNCTIONS
@@ -74,7 +75,7 @@ local function refreshPlayerColors()
             local p = P:FindFirstChild(b.Text)
             if p then
                 if RocketSpamActive and RocketTargets[p.UserId] then b.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-                elseif IKillActive and IKillTargets[p] then b.BackgroundColor3 = Color3.fromRGB(40, 150, 160)
+                elseif VoidKillActive and VoidKillTargets[p] then b.BackgroundColor3 = Color3.fromRGB(40, 150, 160)
                 elseif SKillActive and SKillTargets[p] then b.BackgroundColor3 = Color3.fromRGB(40, 110, 150)
                 elseif SpawnCloneActive and SpawnCloneTargets[p] then b.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
                 elseif StealArmActive and StealArmTargets[p] then b.BackgroundColor3 = Color3.fromRGB(140, 90, 20)
@@ -86,8 +87,7 @@ end
 
 local function makeBtn(parent, text, size, pos, bgColor)
     local b = Instance.new("TextButton", parent)
-    b.Size, b.Position, b.BackgroundColor3 = size, pos, bgColor
-    b.Text, b.TextColor3, b.Font, b.TextSize = text, Color3.new(0.9, 0.9, 0.9), Enum.Font.Code, 12
+    b.Size, b.Position, b.BackgroundColor3, b.Text, b.TextColor3, b.Font, b.TextSize = size, pos, bgColor, text, Color3.new(0.9, 0.9, 0.9), Enum.Font.Code, 12
     return b
 end
 
@@ -342,7 +342,7 @@ end)
 
 makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-300), Color3.fromRGB(70,40,70)).MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if r then r.CFrame = CFrame.new(-1063.3, -491.6, 368.2) end
+    if r then r.CFrame = CFrame.new(-1050, -490, 90) end
 end)
 
 local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-300), Color3.fromRGB(40,70,40))
@@ -413,10 +413,11 @@ createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), function()
             if moveDir.Magnitude > 0 then ghostOffset += (moveDir.Unit * (FlySpeed * dt)) end
             local basePos, ghostRot = root.Position + ghostOffset, lookCF.Rotation
             
-            if StealArmActive then
-                local sChar
-                for t, a in pairs(StealArmTargets) do if a and t.Character then sChar = t.Character break end end
-                local tArm = sChar and (sChar:FindFirstChild("Left Arm") or sChar:FindFirstChild("LeftLowerArm") or sChar:FindFirstChild("LeftHand"))
+            -- FIX: Unlocked from 'if StealArmActive then'. Now it universally responds to StealArmTargets list
+            local sChar
+            for t, a in pairs(StealArmTargets) do if a and t.Character then sChar = t.Character break end end
+            if sChar then
+                local tArm = sChar:FindFirstChild("Left Arm") or sChar:FindFirstChild("LeftLowerArm") or sChar:FindFirstChild("LeftHand")
                 if tArm then basePos = tArm.Position - (ghostRot * Vector3.new(1.5,0,0)); ghostOffset = basePos - root.Position end
             end
             
@@ -502,7 +503,6 @@ end)
 createToggle(0.5, -150, "Anti-Void", Color3.fromRGB(40,120,120), function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or -500; return AntiVoidActive end)
 createToggle(0.5, -120, "Steal Arm", Color3.fromRGB(140,90,20), function() StealArmActive = not StealArmActive; if not StealArmActive then table.clear(StealArmTargets) end; refreshPlayerColors(); return StealArmActive end)
 
--- Anti-Arm Steal (Raw Button due to custom logic)
 local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-90), Color3.fromRGB(50,50,50))
 AASB.TextSize = 11
 AASB.MouseButton1Click:Connect(function()
@@ -531,7 +531,7 @@ AASB.MouseButton1Click:Connect(function()
     end)
 end)
 
-createToggle(0.5, -60, "I-Kill", Color3.fromRGB(40,150,160), function() IKillActive = not IKillActive; if not IKillActive then clearToolTargets(IKillTargets, IKillLoops, IKillTrackers, ActiveIKillSwords) end; refreshPlayerColors(); return IKillActive end)
+createToggle(0.5, -60, "Void-Kill", Color3.fromRGB(40,150,160), function() VoidKillActive = not VoidKillActive; if not VoidKillActive then clearToolTargets(VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords) end; refreshPlayerColors(); return VoidKillActive end)
 createToggle(0.5, -30, "S-Kill", Color3.fromRGB(40,110,150), function() SKillActive = not SKillActive; if not SKillActive then clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end; refreshPlayerColors(); return SKillActive end)
 
 ---------------------------------------------------------
@@ -540,9 +540,9 @@ createToggle(0.5, -30, "S-Kill", Color3.fromRGB(40,110,150), function() SKillAct
 CB.MouseButton1Click:Connect(function() 
     if desyncActive then desyncActive = false; if desyncLoop then desyncLoop:Disconnect() end end
     if antiPickupConnection then antiPickupConnection:Disconnect(); antiPickupConnection = nil end
-    AntiPickupActive, isGodMode, IKillActive, SpawnCloneActive = false, false, false, false
+    AntiPickupActive, isGodMode, VoidKillActive, SpawnCloneActive = false, false, false, false
     clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords)
-    clearToolTargets(IKillTargets, IKillLoops, IKillTrackers, ActiveIKillSwords)
+    clearToolTargets(VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords)
     restoreTools()
     SG:Destroy() 
 end)
@@ -640,17 +640,92 @@ local function E(t, btn)
         task.spawn(function() executeSpectralNuke(t, btn) end)
     end
 
+    -- === VOID-KILL STRICT SEQUENCE ===
+    if VoidKillActive then
+        tookAction = true
+        if VoidKillTargets[t] then
+            local single = {[t] = true}
+            clearToolTargets(single, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords)
+            VoidKillTargets[t] = nil
+        else
+            VoidKillTargets[t] = true; refreshPlayerColors()
+            
+            task.spawn(function()
+                local char = LP.Character
+                local hum, root = char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart")
+                local bp = LP:FindFirstChild("Backpack")
+                if not char or not hum or not root or not bp then return end
+                
+                -- STEP 1: TP to Void
+                root.CFrame = CFrame.new(-1050, -490, 90)
+                task.wait(0.1)
+                
+                -- STEP 2: Equip ONLY Bear Arm, lock ghost to left arm, wait 0.2s
+                hum:UnequipTools()
+                local specificBearArm = bp:FindFirstChild("Bear Arm") or char:FindFirstChild("Bear Arm") or bp:FindFirstChild("BearArm") or char:FindFirstChild("BearArm")
+                if specificBearArm then
+                    hum:EquipTool(specificBearArm)
+                    StealArmTargets[t] = true
+                    
+                    local loopEnd = tick() + 0.2
+                    while tick() < loopEnd and VoidKillTargets[t] do
+                        RS.Heartbeat:Wait()
+                    end
+                end
+                
+                if not VoidKillTargets[t] then return end
+                
+                -- STEP 3: Turn on I-Kill
+                local sword, allSwords = nil, {}
+                for _, obj in pairs(char:GetChildren()) do if obj.Name == "IceSword" then table.insert(allSwords, obj) end end
+                for _, obj in pairs(bp:GetChildren()) do if obj.Name == "IceSword" then table.insert(allSwords, obj) end end
+                for _, s in pairs(allSwords) do if not ActiveVoidKillSwords[s] then sword = s; break end end
+                
+                if sword then
+                    ActiveVoidKillSwords[sword] = t
+                    hum:EquipTool(sword) 
+                    attachTool(t, sword, VoidKillLoops)
+                    VoidKillTrackers[t.Name] = t.CharacterAdded:Connect(function() 
+                        if sword and sword.Parent == char then attachTool(t, sword, VoidKillLoops) end 
+                    end)
+                else
+                    local old = btn.Text
+                    btn.Text, btn.BackgroundColor3 = "NO ICESWORD", Color3.fromRGB(150, 40, 40)
+                    task.delay(1, function() if btn and btn.Parent and not VoidKillTargets[t] then btn.Text = old; refreshPlayerColors() end end)
+                    
+                    local single = {[t] = true}
+                    clearToolTargets(single, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords)
+                    VoidKillTargets[t] = nil
+                    StealArmTargets[t] = nil
+                    return
+                end
+                
+                -- STEP 4: Spam equip/unequip the single Bear Arm for 1 second
+                if specificBearArm then
+                    local spamEndTime = tick() + 3.0
+                    while tick() < spamEndTime and VoidKillTargets[t] do
+                        if specificBearArm.Parent == bp then specificBearArm.Parent = char else specificBearArm.Parent = bp end
+                        task.wait(0.01)
+                    end
+                    specificBearArm.Parent = bp
+                    StealArmTargets[t] = nil
+                end
+                
+            end)
+        end
+    end
+
     if SKillActive then tookAction = true; toggleTargetSkill(btn, t, "BoneSword", SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end
-    if IKillActive then tookAction = true; toggleTargetSkill(btn, t, "IceSword", IKillTargets, IKillLoops, IKillTrackers, ActiveIKillSwords) end
 
     if tookAction then refreshPlayerColors(); return end 
 
-    -- Give Gear Execution (Runs only when no toggles are active)
     if GiveDroppedGearActive then
         btn.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
-        consistentWeldTPGive(t)
-        task.delay(1.5, refreshPlayerColors)
+        consistentWeldTPGive(t); task.wait(1.5); refreshPlayerColors()
+        return
     end
+
+    executeSpectralNuke(t, btn)
 end
 
 local function R()
