@@ -18,13 +18,17 @@ if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
 ---------------------------------------------------------
 local desyncActive, desyncLoop, ghostOffset = false, nil, Vector3.new(0, 0, 0)
 local Flying, FlySpeed = false, 100 
-local NoclipActive, GhostTouchActive, GiveAllActive, GiveDroppedGearActive = false, false, false, false
+local NoclipActive, GhostTouchActive, GiveDroppedGearActive = false, false, false
 local IsStackingActive, isGodMode, InfSupernovaActive = false, false, false
-local IsAntiLaser, AntiVoidActive, isAntiStealing = false, false, false
+local isAntiStealing = false
+
+-- AUTO-ON STATES
+local GiveAllActive = true
+local IsAntiLaser = true
+local AntiVoidActive = true
 
 local RocketSpamActive, AutoRocketEnabled, AUTO_RANGE, RocketTargets = false, false, 25, {}
 local SpawnCloneActive, SpawnCloneTargets = false, {}
-local AutoChudActive, isShootingFood, AutoChudTargets = false, false, {}
 
 local SKillActive, SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords = false, {}, {}, {}, {}
 local VoidKillActive, VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords = false, {}, {}, {}, {}
@@ -35,6 +39,7 @@ local hiddenToolsCache = Instance.new("Folder")
 hiddenToolsCache.Name = "AntiPickupCache"
 
 local UsedSwords, LatestClone = {}, nil
+local lastGhostTouch = 0 -- Prevents game crash from spamming touch interest
 local laserNames = {["Rain"]=true, ["Beam"]=true, ["Effect"]=true, ["StarShard"]=true, ["CrimsonPillar"]=true, ["Part"]=true}
 
 ---------------------------------------------------------
@@ -126,12 +131,13 @@ local function attachTool(tPlayer, tool, loopsMap)
     if not char then return end
     for _, part in pairs(tool:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.Massless, part.CanCollide, part.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
+            part.Massless = true
+            part.CanCollide = false
+            part.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
         end
     end
     local handle = tool:FindFirstChild("Handle")
     local rightArm = char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand")
-    
     if handle and rightArm then
         tool.RequiresHandle = true 
         local n = tPlayer.Name
@@ -143,7 +149,9 @@ local function attachTool(tPlayer, tool, loopsMap)
             if tool.Parent == LP:FindFirstChild("Backpack") then tool.Parent = char end
             if tool.Parent == char and handle then
                 local grip
-                for _, j in pairs(rightArm:GetChildren()) do if j.Name == "RightGrip" and j.Part1 == handle then grip = j; break end end
+                for _, j in pairs(rightArm:GetChildren()) do 
+                    if j.Name == "RightGrip" and j.Part1 == handle then grip = j; break end 
+                end
                 if grip then grip.C1 = tHRP.CFrame:Inverse() * rightArm.CFrame * grip.C0 end
             end
         end)
@@ -167,7 +175,6 @@ local function toggleTargetSkill(btn, t, swordName, targetMap, loopMap, trackerM
         if char then for _, obj in pairs(char:GetChildren()) do if obj.Name == swordName then table.insert(allSwords, obj) end end end
         if bp then for _, obj in pairs(bp:GetChildren()) do if obj.Name == swordName then table.insert(allSwords, obj) end end end
         for _, s in pairs(allSwords) do if not activeMap[s] then sword = s; break end end
-        
         if sword then
             targetMap[t], activeMap[sword], sword.Parent = true, t, char 
             attachTool(t, sword, loopMap)
@@ -186,7 +193,6 @@ local function consistentWeldTPGive(targetPlayer)
     local tc = targetPlayer.Character
     local thrp = tc and (tc:FindFirstChild("HumanoidRootPart") or tc:FindFirstChild("Torso"))
     if not root or not thrp then return end
-
     local gears, welds, originalCFrame = {}, {}, root.CFrame
     for _, item in ipairs(workspace:GetChildren()) do
         if item:IsA("Tool") then
@@ -200,7 +206,6 @@ local function consistentWeldTPGive(targetPlayer)
         end
     end
     if #gears == 0 then return end
-
     task.spawn(function()
         local start = tick()
         while tick() - start < 1 do
@@ -230,24 +235,20 @@ local function executeSpectralNuke(t, btn)
     local tc = t.Character
     local thrp = tc and tc:FindFirstChild("HumanoidRootPart")
     if not c or not h or not hrp or not thrp then return end
-
     local bp = LP:WaitForChild("Backpack")
     local eS = bp:FindFirstChild("EnergySword") or c:FindFirstChild("EnergySword")
     local sS
     for _, item in ipairs(bp:GetChildren()) do if item.Name == "SpectralSword" and not UsedSwords[item] then sS = item break end end
     if not sS then for _, item in ipairs(c:GetChildren()) do if item.Name == "SpectralSword" and not UsedSwords[item] then sS = item break end end end
-
     if not eS or not sS then 
         local old = btn.Text
         btn.Text, btn.BackgroundColor3 = "NO SWORDS!", Color3.fromRGB(150, 40, 40)
         task.delay(1, function() if btn and btn.Parent then btn.Text = old; refreshPlayerColors() end end)
         return 
     end
-
     local kd, originalCFrame = sS:FindFirstChild("KeyDown"), hrp.CFrame 
     UsedSwords[sS], eS.Parent, sS.Parent = true, c, c
     local startTime, lastSpam, conn = tick(), 0, nil
-
     conn = RS.Heartbeat:Connect(function()
         local now = tick()
         if (now - startTime) < 1 and hrp and thrp and thrp.Parent then
@@ -290,7 +291,6 @@ task.spawn(function()
                 end
             end
         end
-
         if AutoRocketEnabled then
             local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
             if myRoot then
@@ -327,6 +327,7 @@ end)
 -- IMMEDIATE EXECUTIONS (AUTO-RUN)
 ---------------------------------------------------------
 task.spawn(function()
+    workspace.FallenPartsDestroyHeight = -9e9
     local root = (LP.Character or LP.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 5)
     if not root then return end
     local closest, cDist = nil, math.huge
@@ -339,7 +340,6 @@ task.spawn(function()
     if closest then homeCFrame = closest.CFrame + Vector3.new(0, 4, 0) end
 end)
 
--- AUTO TELEPORT ALL WALLS ON EXECUTION
 task.spawn(function()
     local FAR_AWAY_COORDS = CFrame.new(99999, 99999, 99999)
     for _, v in ipairs(workspace:GetDescendants()) do
@@ -370,8 +370,8 @@ THB.MouseButton1Click:Connect(function()
     end
 end)
 
-local function createToggle(col, yPos, text, activeCol, action)
-    local btn = makeBtn(MF, text..": OFF", UDim2.new(0.5,0,0,30), UDim2.new(col,0,1,yPos), Color3.fromRGB(50,50,50))
+local function createToggle(col, yPos, text, activeCol, initialValue, action)
+    local btn = makeBtn(MF, text..(initialValue and ": ON" or ": OFF"), UDim2.new(0.5,0,0,30), UDim2.new(col,0,1,yPos), initialValue and activeCol or Color3.fromRGB(50,50,50))
     btn.TextSize = 11
     btn.MouseButton1Click:Connect(function()
         local state = action()
@@ -380,7 +380,7 @@ local function createToggle(col, yPos, text, activeCol, action)
 end
 
 -- COLUMN 1
-createToggle(0, -270, "Fly", Color3.fromRGB(40,100,150), function()
+createToggle(0, -270, "Fly", Color3.fromRGB(40,100,150), false, function()
     Flying = not Flying
     local char = LP.Character
     local root, hum = char and char:FindFirstChild("HumanoidRootPart"), char and char:FindFirstChildOfClass("Humanoid")
@@ -402,8 +402,8 @@ createToggle(0, -270, "Fly", Color3.fromRGB(40,100,150), function()
     end
     return Flying
 end)
-createToggle(0, -240, "Give Gear", Color3.fromRGB(120,80,40), function() GiveDroppedGearActive = not GiveDroppedGearActive; return GiveDroppedGearActive end)
-createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), function()
+createToggle(0, -240, "Give Gear", Color3.fromRGB(120,80,40), false, function() GiveDroppedGearActive = not GiveDroppedGearActive; return GiveDroppedGearActive end)
+createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), false, function()
     desyncActive = not desyncActive
     local char = LP.Character
     local hum, root = char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart")
@@ -426,14 +426,12 @@ createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), function()
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += lookCF.RightVector end
             if moveDir.Magnitude > 0 then ghostOffset += (moveDir.Unit * (FlySpeed * dt)) end
             local basePos, ghostRot = root.Position + ghostOffset, lookCF.Rotation
-            
             local sChar
             for t, a in pairs(StealArmTargets) do if a and t.Character then sChar = t.Character break end end
             if sChar then
                 local tArm = sChar:FindFirstChild("Left Arm") or sChar:FindFirstChild("LeftLowerArm") or sChar:FindFirstChild("LeftHand")
                 if tArm then basePos = tArm.Position - (ghostRot * Vector3.new(1.5,0,0)); ghostOffset = basePos - root.Position end
             end
-            
             for _, part in pairs(char:GetChildren()) do
                 if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
                     local n, pOffset = part.Name, CFrame.new(0,0,0)
@@ -460,8 +458,8 @@ createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), function()
     end
     return desyncActive
 end)
-createToggle(0, -180, "Ghost Touch", Color3.fromRGB(150,80,20), function() GhostTouchActive = not GhostTouchActive; return GhostTouchActive end)
-createToggle(0, -150, "Inf Stack", Color3.fromRGB(100,40,100), function()
+createToggle(0, -180, "Ghost Touch", Color3.fromRGB(150,80,20), false, function() GhostTouchActive = not GhostTouchActive; return GhostTouchActive end)
+createToggle(0, -150, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
     IsStackingActive = not IsStackingActive
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
     local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
@@ -470,38 +468,61 @@ createToggle(0, -150, "Inf Stack", Color3.fromRGB(100,40,100), function()
     end
     return IsStackingActive
 end)
-createToggle(0, -120, "Give All", Color3.fromRGB(40,80,120), function() GiveAllActive = not GiveAllActive; return GiveAllActive end)
-createToggle(0, -90, "God Mode", Color3.fromRGB(40,120,40), function()
-    isGodMode = not isGodMode
-    if isGodMode then
-        task.spawn(function()
-            while isGodMode do 
-                local char, bp = LP.Character, LP:FindFirstChild("Backpack") 
-                if char and bp then 
-                    local swords = {} 
-                    for _, t in pairs(char:GetChildren()) do if t.Name == "OverseerwrathSword" then table.insert(swords, t) end end 
-                    for _, t in pairs(bp:GetChildren()) do if t.Name == "OverseerwrathSword" and #swords < 10 then table.insert(swords, t) end end 
-                    if #swords > 0 then 
-                        for _, s in pairs(swords) do s.Parent = char end; task.wait(0.01) 
-                        for _, s in pairs(swords) do s.Parent = bp end; task.wait(0.01) 
-                    else task.wait(0.1) end 
-                else task.wait(0.1) end 
+createToggle(0, -120, "Give All", Color3.fromRGB(40,80,120), true, function() GiveAllActive = not GiveAllActive; return GiveAllActive end)
+
+-- God Mode touch button with local inventory desync sequence
+local GodBtn = makeBtn(MF, "God Mode", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-90), Color3.fromRGB(50,50,50))
+GodBtn.TextSize = 11
+GodBtn.MouseButton1Click:Connect(function()
+    if isGodMode then return end
+    isGodMode = true
+    GodBtn.Text = "STACKING..."
+    GodBtn.BackgroundColor3 = Color3.fromRGB(40,120,40)
+    
+    task.spawn(function()
+        while isGodMode do 
+            local char, bp = LP.Character, LP:FindFirstChild("Backpack") 
+            if char and bp then 
+                local swords = {} 
+                for _, t in pairs(char:GetChildren()) do if t.Name == "OverseerwrathSword" then table.insert(swords, t) end end 
+                for _, t in pairs(bp:GetChildren()) do if t.Name == "OverseerwrathSword" then table.insert(swords, t) end end 
+                
+                -- Sequence triggered at 6 swords
+                if #swords >= 6 then
+                    for _, s in pairs(swords) do s.Parent = bp end
+                    task.wait(0.2)
+                    for _, s in pairs(swords) do s.Parent = char end
+                    task.wait(0.2)
+                    for _, s in pairs(swords) do s.Parent = bp end
+                    task.wait() 
+                    for _, s in pairs(swords) do s.Parent = nil end
+                    break
+                end
+                
+                if #swords > 0 then 
+                    for _, s in pairs(swords) do s.Parent = char end; task.wait(0.01) 
+                    for _, s in pairs(swords) do s.Parent = bp end; task.wait(0.01) 
+                else 
+                    task.wait(0.1) 
+                end 
+            else 
+                task.wait(0.1) 
             end 
-        end)
-    else
-        local char, bp = LP.Character, LP:FindFirstChild("Backpack")
-        if char and bp then for _, t in pairs(char:GetChildren()) do if t.Name == "OverseerwrathSword" then t.Parent = bp end end end
-    end
-    return isGodMode
+        end 
+        GodBtn.Text = "God Mode"
+        GodBtn.BackgroundColor3 = Color3.fromRGB(50,50,50)
+        isGodMode = false
+    end)
 end)
-createToggle(0, -60, "ANTI-LASER", Color3.fromRGB(40,90,40), function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
-createToggle(0, -30, "R-Spam", Color3.fromRGB(150,30,30), function() RocketSpamActive = not RocketSpamActive; if not RocketSpamActive then table.clear(RocketTargets) end; refreshPlayerColors(); return RocketSpamActive end)
+
+createToggle(0, -60, "ANTI-LASER", Color3.fromRGB(40,90,40), true, function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
+createToggle(0, -30, "R-Spam", Color3.fromRGB(150,30,30), false, function() RocketSpamActive = not RocketSpamActive; if not RocketSpamActive then table.clear(RocketTargets) end; refreshPlayerColors(); return RocketSpamActive end)
 
 -- COLUMN 2
-createToggle(0.5, -270, "Noclip", Color3.fromRGB(120,40,120), function() NoclipActive = not NoclipActive; return NoclipActive end)
-createToggle(0.5, -240, "Spawn Clone", Color3.fromRGB(40,120,40), function() SpawnCloneActive = not SpawnCloneActive; if not SpawnCloneActive then table.clear(SpawnCloneTargets) end; refreshPlayerColors(); return SpawnCloneActive end)
-createToggle(0.5, -210, "Supernova", Color3.fromRGB(150,80,40), function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
-createToggle(0.5, -180, "Anti-Pickup", Color3.fromRGB(40,120,40), function()
+createToggle(0.5, -270, "Noclip", Color3.fromRGB(120,40,120), false, function() NoclipActive = not NoclipActive; return NoclipActive end)
+createToggle(0.5, -240, "Spawn Clone", Color3.fromRGB(40,120,40), false, function() SpawnCloneActive = not SpawnCloneActive; if not SpawnCloneActive then table.clear(SpawnCloneTargets) end; refreshPlayerColors(); return SpawnCloneActive end)
+createToggle(0.5, -210, "Supernova", Color3.fromRGB(150,80,40), false, function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
+createToggle(0.5, -180, "Anti-Pickup", Color3.fromRGB(40,120,40), false, function()
     AntiPickupActive = not AntiPickupActive
     if AntiPickupActive then
         for _, obj in ipairs(workspace:GetDescendants()) do hideTool(obj) end
@@ -513,8 +534,8 @@ createToggle(0.5, -180, "Anti-Pickup", Color3.fromRGB(40,120,40), function()
     end
     return AntiPickupActive
 end)
-createToggle(0.5, -150, "Anti-Void", Color3.fromRGB(40,120,120), function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or -500; return AntiVoidActive end)
-createToggle(0.5, -120, "Steal Arm", Color3.fromRGB(140,90,20), function() StealArmActive = not StealArmActive; if not StealArmActive then table.clear(StealArmTargets) end; refreshPlayerColors(); return StealArmActive end)
+createToggle(0.5, -150, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or -500; return AntiVoidActive end)
+createToggle(0.5, -120, "Steal Arm", Color3.fromRGB(140,90,20), false, function() StealArmActive = not StealArmActive; if not StealArmActive then table.clear(StealArmTargets) end; refreshPlayerColors(); return StealArmActive end)
 
 local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-90), Color3.fromRGB(50,50,50))
 AASB.TextSize = 11
@@ -526,7 +547,7 @@ AASB.MouseButton1Click:Connect(function()
             local char, bp = LP.Character, LP.Backpack
             local initK = bp:FindFirstChild("MadMurdererKnife")
             if initK and initK:IsA("Tool") then
-                initK.Parent = char; task.wait(0.2); initK.Parent = bp; task.wait()
+                initK.Parent = char; task.wait(0.4); initK.Parent = bp; task.wait()
                 local ks = {}
                 for _, i in ipairs(bp:GetChildren()) do if i:IsA("Tool") and i.Name == "MadMurdererKnife" then table.insert(ks, i) end end
                 if #ks >= 2 then
@@ -545,8 +566,8 @@ AASB.MouseButton1Click:Connect(function()
     end)
 end)
 
-createToggle(0.5, -60, "Void-Kill", Color3.fromRGB(40,150,160), function() VoidKillActive = not VoidKillActive; if not VoidKillActive then clearToolTargets(VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords) end; refreshPlayerColors(); return VoidKillActive end)
-createToggle(0.5, -30, "S-Kill", Color3.fromRGB(40,110,150), function() SKillActive = not SKillActive; if not SKillActive then clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end; refreshPlayerColors(); return SKillActive end)
+createToggle(0.5, -60, "Void-Kill", Color3.fromRGB(40,150,160), false, function() VoidKillActive = not VoidKillActive; if not VoidKillActive then clearToolTargets(VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords) end; refreshPlayerColors(); return VoidKillActive end)
+createToggle(0.5, -30, "S-Kill", Color3.fromRGB(40,110,150), false, function() SKillActive = not SKillActive; if not SKillActive then clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end; refreshPlayerColors(); return SKillActive end)
 
 ---------------------------------------------------------
 -- BACKGROUND TASKS & EVENTS
@@ -575,29 +596,21 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.1)
-        if AutoChudActive then
-            local hasT = false
-            for t, a in pairs(AutoChudTargets) do if a and t.Character then hasT = true; break end end
-            if hasT and not isShootingFood then
-                local bp, char = LP:FindFirstChild("Backpack"), LP.Character
-                if bp and char then
-                    local guns = {}
-                    for _, i in pairs(bp:GetChildren()) do if i.Name == "BeefWellingtonGun" then table.insert(guns, i) end end
-                    for _, i in pairs(char:GetChildren()) do if i.Name == "BeefWellingtonGun" then table.insert(guns, i) end end
-                    for _, g in ipairs(guns) do
-                        if g.Enabled then
-                            isShootingFood = true
-                            task.spawn(function() g.Parent = char; task.wait(0.08); pcall(function() g:Activate() end); task.wait(0.05); g.Parent = bp; isShootingFood = false end)
-                            break 
-                        end
+
+        if InfSupernovaActive and LP then 
+            local pth = workspace:FindFirstChild(LP.Name) 
+            
+            if pth then pth = pth:FindFirstChild("IvoryPeriastron") end
+            if pth then pth = pth:FindFirstChild("Server") end
+            if pth then pth = pth:FindFirstChild("StarSummon") end
+            
+            if pth then
+                for _, c in ipairs(pth:GetChildren()) do
+                    if c.Name == "StarShard" or c.Name == "Explosion" then
+                        c:Destroy()
                     end
                 end
             end
-        end
-        if InfSupernovaActive then 
-            local pth = workspace:FindFirstChild("SingleRollDingle10")
-            pth = pth and pth:FindFirstChild("IvoryPeriastron") and pth.IvoryPeriastron:FindFirstChild("Server") and pth.IvoryPeriastron.Server:FindFirstChild("StarSummon")
-            if pth then for _, c in ipairs(pth:GetChildren()) do if c.Name == "StarShard" or c.Name == "Explosion" then c:Destroy() end end end
         end
     end
 end)
@@ -616,9 +629,16 @@ RS.Heartbeat:Connect(function()
     if GhostTouchActive then
         local root = char and (char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Torso"))
         local target = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
+        
         if target and root then
-            local cRoot = target:FindFirstChild("HumanoidRootPart") or target:FindFirstChild("Torso")
-            if cRoot then cRoot.CFrame = root.CFrame * CFrame.new(-1.2, 0.5, 2) end 
+            local cloneTool = target:FindFirstChildOfClass("Tool")
+            local handle = cloneTool and (cloneTool:FindFirstChild("Handle") or cloneTool:FindFirstChildOfClass("BasePart"))
+            
+            if handle and (tick() - lastGhostTouch > 0.1) then
+                lastGhostTouch = tick()
+                firetouchinterest(root, handle, 0)
+                firetouchinterest(root, handle, 1)
+            end
         end
     end
 end)
@@ -634,7 +654,6 @@ end)
 ---------------------------------------------------------
 local function E(t, btn)
     local tookAction = false
-
     if StealArmActive then
         tookAction = true
         if StealArmTargets[t] then StealArmTargets[t] = nil else
@@ -642,19 +661,15 @@ local function E(t, btn)
             task.delay(0.2, function() if StealArmTargets[t] then StealArmTargets[t] = nil; refreshPlayerColors() end end)
         end
     end
-
     if RocketSpamActive then
         tookAction = true
         RocketTargets[t.UserId] = not RocketTargets[t.UserId] and true or nil
     end
-    
     if SpawnCloneActive then
         tookAction = true
         table.clear(SpawnCloneTargets); SpawnCloneTargets[t] = true
         task.spawn(function() executeSpectralNuke(t, btn) end)
     end
-
-    -- === VOID-KILL STRICT SEQUENCE ===
     if VoidKillActive then
         tookAction = true
         if VoidKillTargets[t] then
@@ -663,38 +678,26 @@ local function E(t, btn)
             VoidKillTargets[t] = nil
         else
             VoidKillTargets[t] = true; refreshPlayerColors()
-            
             task.spawn(function()
                 local char = LP.Character
                 local hum, root = char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart")
                 local bp = LP:FindFirstChild("Backpack")
                 if not char or not hum or not root or not bp then return end
-                
-                -- STEP 1: TP to Void
                 root.CFrame = CFrame.new(-1050, -490, 90)
                 task.wait(0.1)
-                
-                -- STEP 2: Equip ONLY Bear Arm, lock ghost to left arm, wait 0.2s
                 hum:UnequipTools()
                 local specificBearArm = bp:FindFirstChild("Bear Arm") or char:FindFirstChild("Bear Arm") or bp:FindFirstChild("BearArm") or char:FindFirstChild("BearArm")
                 if specificBearArm then
                     hum:EquipTool(specificBearArm)
                     StealArmTargets[t] = true
-                    
                     local loopEnd = tick() + 0.2
-                    while tick() < loopEnd and VoidKillTargets[t] do
-                        RS.Heartbeat:Wait()
-                    end
+                    while tick() < loopEnd and VoidKillTargets[t] do RS.Heartbeat:Wait() end
                 end
-                
                 if not VoidKillTargets[t] then return end
-                
-                -- STEP 3: Turn on I-Kill
                 local sword, allSwords = nil, {}
                 for _, obj in pairs(char:GetChildren()) do if obj.Name == "IceSword" then table.insert(allSwords, obj) end end
                 for _, obj in pairs(bp:GetChildren()) do if obj.Name == "IceSword" then table.insert(allSwords, obj) end end
                 for _, s in pairs(allSwords) do if not ActiveVoidKillSwords[s] then sword = s; break end end
-                
                 if sword then
                     ActiveVoidKillSwords[sword] = t
                     hum:EquipTool(sword) 
@@ -706,15 +709,12 @@ local function E(t, btn)
                     local old = btn.Text
                     btn.Text, btn.BackgroundColor3 = "NO ICESWORD", Color3.fromRGB(150, 40, 40)
                     task.delay(1, function() if btn and btn.Parent and not VoidKillTargets[t] then btn.Text = old; refreshPlayerColors() end end)
-                    
                     local single = {[t] = true}
                     clearToolTargets(single, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords)
                     VoidKillTargets[t] = nil
                     StealArmTargets[t] = nil
                     return
                 end
-                
-                -- STEP 4: Spam equip/unequip the single Bear Arm for 1 second
                 if specificBearArm then
                     local spamEndTime = tick() + 3.0
                     while tick() < spamEndTime and VoidKillTargets[t] do
@@ -724,21 +724,16 @@ local function E(t, btn)
                     specificBearArm.Parent = bp
                     StealArmTargets[t] = nil
                 end
-                
             end)
         end
     end
-
     if SKillActive then tookAction = true; toggleTargetSkill(btn, t, "BoneSword", SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end
-
     if tookAction then refreshPlayerColors(); return end 
-
     if GiveDroppedGearActive then
         btn.BackgroundColor3 = Color3.fromRGB(40, 120, 40)
         consistentWeldTPGive(t); task.wait(1.5); refreshPlayerColors()
         return
     end
-
     executeSpectralNuke(t, btn)
 end
 
