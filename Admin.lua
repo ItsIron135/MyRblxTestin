@@ -126,7 +126,7 @@ local function attachTool(tPlayer, tool, loopsMap)
     if not char then return end
     for _, part in pairs(tool:GetDescendants()) do
         if part:IsA("BasePart") then
-            part.Massless, part.CanCollide, part.CustomPhysicalProperties = true, false, PhysicalProperties.new(0,0,0,0,0)
+            part.Massless, part.CanCollide, part.CustomPhysicalProperties = PhysicalProperties.new(0,0,0,0,0)
         end
     end
     local handle = tool:FindFirstChild("Handle")
@@ -324,9 +324,8 @@ UIS.InputBegan:Connect(function(input, gp)
 end)
 
 ---------------------------------------------------------
--- UI CREATION
+-- IMMEDIATE EXECUTIONS (AUTO-RUN)
 ---------------------------------------------------------
-local homeCFrame
 task.spawn(function()
     local root = (LP.Character or LP.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 5)
     if not root then return end
@@ -340,6 +339,21 @@ task.spawn(function()
     if closest then homeCFrame = closest.CFrame + Vector3.new(0, 4, 0) end
 end)
 
+-- AUTO TELEPORT ALL WALLS ON EXECUTION
+task.spawn(function()
+    local FAR_AWAY_COORDS = CFrame.new(99999, 99999, 99999)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v.Name == "SpawnWalls" and v:IsA("BasePart") then
+            v.CFrame = FAR_AWAY_COORDS
+            v.Anchored = true
+            v.CanCollide = false
+        end
+    end
+end)
+
+---------------------------------------------------------
+-- UI CREATION
+---------------------------------------------------------
 makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-300), Color3.fromRGB(70,40,70)).MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if r then r.CFrame = CFrame.new(-1050, -490, 90) end
@@ -413,7 +427,6 @@ createToggle(0, -210, "Perm Desync", Color3.fromRGB(40,100,150), function()
             if moveDir.Magnitude > 0 then ghostOffset += (moveDir.Unit * (FlySpeed * dt)) end
             local basePos, ghostRot = root.Position + ghostOffset, lookCF.Rotation
             
-            -- FIX: Unlocked from 'if StealArmActive then'. Now it universally responds to StealArmTargets list
             local sChar
             for t, a in pairs(StealArmTargets) do if a and t.Character then sChar = t.Character break end end
             if sChar then
@@ -507,23 +520,24 @@ local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,
 AASB.TextSize = 11
 AASB.MouseButton1Click:Connect(function()
     if isAntiStealing then return end
-    isAntiStealing, AASB.BackgroundColor3, AASB.Text = true, Color3.fromRGB(120,30,30), "DROPPING LEFT ARM..."
+    isAntiStealing, AASB.BackgroundColor3, AASB.Text = true, Color3.fromRGB(120,30,30), "GLITCHING ARMS..."
     task.spawn(function()
-        local char = LP.Character
-        local hum, torso = char and char:FindFirstChildOfClass("Humanoid"), char and (char:FindFirstChild("Torso") or char:FindFirstChild("UpperTorso"))
-        if char and hum and torso then
-            hum:UnequipTools(); task.wait(0.05)
-            local aParts = {}
-            for _, n in pairs({"Left Arm","LeftUpperArm","LeftLowerArm","LeftHand"}) do if char:FindFirstChild(n) then table.insert(aParts, char[n]) end end
-            if #aParts > 0 then
-                for _, obj in pairs(torso:GetChildren()) do
-                    if obj:IsA("JointInstance") then for _, p in pairs(aParts) do if obj.Part0 == p or obj.Part1 == p then obj:Destroy() end end end
+        if LP and LP.Character and LP:FindFirstChild("Backpack") then
+            local char, bp = LP.Character, LP.Backpack
+            local initK = bp:FindFirstChild("MadMurdererKnife")
+            if initK and initK:IsA("Tool") then
+                initK.Parent = char; task.wait(0.2); initK.Parent = bp; task.wait()
+                local ks = {}
+                for _, i in ipairs(bp:GetChildren()) do if i:IsA("Tool") and i.Name == "MadMurdererKnife" then table.insert(ks, i) end end
+                if #ks >= 2 then
+                    local k1, k2 = ks[1], ks[2]
+                    k1.Parent = char; task.wait(0.2); k2.Parent = char; task.wait(); k2.Parent = bp; task.wait(0.2)
+                    if k1.Parent == char then k1.Parent = bp end; task.wait(0.2)
+                    local rw = char:FindFirstChild("RightWeld", true)
+                    if rw then rw:Destroy() end
+                    local ls = char:FindFirstChild("Left Shoulder", true)
+                    if ls then ls:Destroy() end
                 end
-                for _, p in pairs(aParts) do
-                    for _, obj in pairs(p:GetChildren()) do if obj:IsA("JointInstance") or obj:IsA("BodyMover") or obj:IsA("Constraint") then obj:Destroy() end end
-                    p.Anchored, p.CanCollide, p.CFrame = false, false, CFrame.new(0,-600,0) 
-                end
-                hum:ChangeState(Enum.HumanoidStateType.Physics); task.wait(0.1); hum:ChangeState(Enum.HumanoidStateType.GettingUp)
             end
         end
         task.wait(1.5)
