@@ -1200,7 +1200,7 @@ task.spawn(function()
     task.wait(3)
     local FAR = CFrame.new(99999,99999,99999)
     for _, v in ipairs(workspace:GetDescendants()) do if v.Name == "SpawnWalls" and v:IsA("BasePart") then v.CFrame, v.Anchored, v.CanCollide = FAR, true, false end end
-    task.wait(2)
+    task.wait(4)
     do
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
