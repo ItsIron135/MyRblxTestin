@@ -40,8 +40,8 @@ local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=
 local homeCFrame = CFrame.new(0, 10, 0)
 
 local giveAllRunning = false
-local GIVE_ALL_NORMAL_DELAY = 0.05
-local GIVE_ALL_BURST_TIME = 0.05
+local GIVE_ALL_NORMAL_DELAY = 0
+local GIVE_ALL_BURST_TIME = 0.1
 local GIVE_ALL_BURST_AMOUNT = 120
 local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlock","SpawnLuckyBlock","SpawnGalaxyBlock"}
 
