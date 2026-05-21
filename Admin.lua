@@ -40,9 +40,9 @@ local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=
 local homeCFrame = CFrame.new(0, 10, 0)
 
 local giveAllRunning = false
-local GIVE_ALL_NORMAL_DELAY = 0.02
+local GIVE_ALL_NORMAL_DELAY = 0.05
 local GIVE_ALL_BURST_TIME = 0.05
-local GIVE_ALL_BURST_AMOUNT = 200
+local GIVE_ALL_BURST_AMOUNT = 120
 local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlock","SpawnLuckyBlock","SpawnGalaxyBlock"}
 
 ---------------------------------------------------------
@@ -51,10 +51,10 @@ local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlo
 local function set(o, t) for k,v in pairs(t) do o[k] = v end return o end
 
 local SG = set(Instance.new("ScreenGui", PG), {Name="StealerUI", ResetOnSpawn=false})
-local MF = set(Instance.new("Frame", SG), {Size=UDim2.new(0,240,0,580), Position=UDim2.new(0.85,-120,0.5,-200), BackgroundColor3=Color3.fromRGB(35,35,35), Active=true, Draggable=true, BorderSizePixel=0})
+local MF = set(Instance.new("Frame", SG), {Size=UDim2.new(0,240,0,610), Position=UDim2.new(0.85,-120,0.5,-200), BackgroundColor3=Color3.fromRGB(35,35,35), Active=true, Draggable=true, BorderSizePixel=0})
 set(Instance.new("TextLabel", MF), {Size=UDim2.new(1,-30,0,30), BackgroundTransparency=1, Text="Admin Panel", TextColor3=Color3.new(0.9,0.9,0.9), Font=Enum.Font.Code, TextSize=14})
 local CB = set(Instance.new("TextButton", MF), {Size=UDim2.new(0,30,0,30), Position=UDim2.new(1,-30,0,0), BackgroundColor3=Color3.fromRGB(150,50,50), Text="X", TextColor3=Color3.new(1,1,1)})
-local SF = set(Instance.new("ScrollingFrame", MF), {Size=UDim2.new(1,0,1,-410), Position=UDim2.new(0,0,0,30), BackgroundTransparency=1, ScrollBarThickness=6, ScrollingEnabled=true, Active=true})
+local SF = set(Instance.new("ScrollingFrame", MF), {Size=UDim2.new(1,0,1,-440), Position=UDim2.new(0,0,0,30), BackgroundTransparency=1, ScrollBarThickness=6, ScrollingEnabled=true, Active=true})
 local UIList = Instance.new("UIListLayout", SF)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() SF.CanvasSize = UDim2.new(0,0,0,UIList.AbsoluteContentSize.Y) end)
@@ -578,7 +578,7 @@ RS.Heartbeat:Connect(function()
                     KillAuraDebounces[p] = true
                     local equipped = 0
                     for _, t in ipairs(char:GetChildren()) do if t.Name == "TriLaserGun" then equipped += 1 end end
-                    if bp and equipped < 4 then
+                    if bp and equipped < 2 then
                         for _, tool in ipairs(bp:GetChildren()) do
                             if tool.Name == "TriLaserGun" then tool.Parent = char; equipped += 1; if equipped >= 2 then break end end
                         end
@@ -588,7 +588,7 @@ RS.Heartbeat:Connect(function()
                         for _, g in ipairs(char:GetChildren()) do
                             if g.Name == "TriLaserGun" and g:FindFirstChild("Click") then g.Click:FireServer(tt.Position) end
                         end
-                        task.delay(1, function()
+                        task.delay(0.5, function()
                             if tt then tt.Anchored = false end
                             KillAuraDebounces[p] = false
                             local cbp = LP:FindFirstChild("Backpack")
@@ -604,7 +604,7 @@ end)
 ---------------------------------------------------------
 -- UI LAYOUT
 ---------------------------------------------------------
-makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-360), Color3.fromRGB(70,40,70)).MouseButton1Click:Connect(function()
+makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-390), Color3.fromRGB(70,40,70)).MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     local targetCF = CFrame.new(-1050, -490, 90)
     local tf = set(Instance.new("Part", workspace), {Size=Vector3.new(200,5,200), CFrame=targetCF * CFrame.new(0,-4,0), Anchored=true, Transparency=1})
@@ -616,7 +616,7 @@ makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-360), Color3.f
     end
 end)
 
-createToggle(0, -330, "Fly", Color3.fromRGB(40,100,150), false, function()
+createToggle(0, -360, "Fly", Color3.fromRGB(40,100,150), false, function()
     Flying = not Flying
     local char = LP.Character
     local root, hum = char and char:FindFirstChild("HumanoidRootPart"), char and char:FindFirstChildOfClass("Humanoid")
@@ -642,9 +642,9 @@ createToggle(0, -330, "Fly", Color3.fromRGB(40,100,150), false, function()
     return Flying
 end)
 
-createToggle(0, -300, "Give Gear", Color3.fromRGB(120,80,40), false, function() GiveDroppedGearActive = not GiveDroppedGearActive; return GiveDroppedGearActive end)
+createToggle(0, -330, "Give Gear", Color3.fromRGB(120,80,40), false, function() GiveDroppedGearActive = not GiveDroppedGearActive; return GiveDroppedGearActive end)
 
-createToggle(0, -270, "Perm Desync", Color3.fromRGB(40,100,150), false, function()
+createToggle(0, -300, "Perm Desync", Color3.fromRGB(40,100,150), false, function()
     env.desyncActive = not env.desyncActive
     local char = LP.Character
     local root, hum = char and char:FindFirstChild("HumanoidRootPart"), char and char:FindFirstChildOfClass("Humanoid")
@@ -699,7 +699,7 @@ createToggle(0, -270, "Perm Desync", Color3.fromRGB(40,100,150), false, function
     return env.desyncActive
 end)
 
-createToggle(0, -240, "Null Desync", Color3.fromRGB(200,50,50), true, function()
+createToggle(0, -270, "Null Desync", Color3.fromRGB(200,50,50), true, function()
     NullDesyncActive = not NullDesyncActive
     if NullDesyncActive then
         nullSavedCF = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") and LP.Character.HumanoidRootPart.CFrame
@@ -708,7 +708,7 @@ createToggle(0, -240, "Null Desync", Color3.fromRGB(200,50,50), true, function()
     return NullDesyncActive
 end)
 
-createToggle(0, -210, "Ghost Touch", Color3.fromRGB(150,80,20), false, function() 
+createToggle(0, -240, "Ghost Touch", Color3.fromRGB(150,80,20), false, function() 
     GhostTouchActive = not GhostTouchActive
     local target, root = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone"), LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if GhostTouchActive and target and root then
@@ -732,7 +732,7 @@ createToggle(0, -210, "Ghost Touch", Color3.fromRGB(150,80,20), false, function(
     return GhostTouchActive 
 end)
 
-createToggle(0, -180, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
+createToggle(0, -210, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
     IsStackingActive = not IsStackingActive
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
     local carrot = (bp and bp:FindFirstChild("Carrot")) or (char and char:FindFirstChild("Carrot"))
@@ -742,11 +742,11 @@ createToggle(0, -180, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
     return IsStackingActive
 end)
 
-GiveAllBtn = makeBtn(MF, "Give All", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-150), Color3.fromRGB(50,50,50))
+GiveAllBtn = makeBtn(MF, "Give All", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-180), Color3.fromRGB(50,50,50))
 GiveAllBtn.TextSize = 11
 GiveAllBtn.MouseButton1Click:Connect(runGiveAll)
 
-local GodBtn = makeBtn(MF, "God Mode", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-120), Color3.fromRGB(50,50,50)); GodBtn.TextSize = 11
+local GodBtn = makeBtn(MF, "God Mode", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-150), Color3.fromRGB(50,50,50)); GodBtn.TextSize = 11
 local function activateGodMode()
     if isGodMode then return end
     isGodMode = true
@@ -782,7 +782,7 @@ local function activateGodMode()
 end
 GodBtn.MouseButton1Click:Connect(activateGodMode)
 
-local PeriBtn = makeBtn(MF, "Peri Laser", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-90), Color3.fromRGB(50,50,50)); PeriBtn.TextSize = 11
+local PeriBtn = makeBtn(MF, "Peri Laser", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-120), Color3.fromRGB(50,50,50)); PeriBtn.TextSize = 11
 PeriBtn.MouseButton1Click:Connect(function()
     local pth = workspace:FindFirstChild(LP.Name) 
     if pth and pth:FindFirstChild("RainbowPeriastron") and pth.RainbowPeriastron:FindFirstChild("Server") and pth.RainbowPeriastron.Server:FindFirstChild("RainBeam") then
@@ -792,6 +792,58 @@ PeriBtn.MouseButton1Click:Connect(function()
     local tool = (LP.Character and LP.Character:FindFirstChild("RainbowPeriastron")) or (LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild("RainbowPeriastron"))
     if tool and tool:FindFirstChild("Remote") then tool.Remote:FireServer(Enum.KeyCode.Q) end
 end)
+
+local HatDropBtn = makeBtn(MF, "Hat Drop", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-90), Color3.fromRGB(50,50,50)); HatDropBtn.TextSize = 11
+HatDropBtn.MouseButton1Click:Connect(function()
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local clone = hum:Clone()
+        hum:Destroy()
+        clone.Parent = char
+        if NullDesyncActive and nullCamPart then
+            cam.CameraSubject = nullCamPart
+        else
+            cam.CameraSubject = clone
+        end
+        local oldTxt, oldCol = HatDropBtn.Text, HatDropBtn.BackgroundColor3
+        HatDropBtn.Text, HatDropBtn.BackgroundColor3 = "DROPPED!", Color3.fromRGB(0,150,255)
+        task.delay(1, function() if HatDropBtn and HatDropBtn.Parent then HatDropBtn.Text, HatDropBtn.BackgroundColor3 = oldTxt, oldCol end end)
+    else
+        local oldTxt, oldCol = HatDropBtn.Text, HatDropBtn.BackgroundColor3
+        HatDropBtn.Text, HatDropBtn.BackgroundColor3 = "NO HUMANOID", Color3.fromRGB(150,40,40)
+        task.delay(1, function() if HatDropBtn and HatDropBtn.Parent then HatDropBtn.Text, HatDropBtn.BackgroundColor3 = oldTxt, oldCol end end)
+    end
+end)
+
+local function getHighlightedPlayers()
+    local set = {}
+    for uid, a in pairs(RocketTargets) do if a then local p = P:GetPlayerByUserId(uid); if p then set[p] = true end end end
+    for p, _ in pairs(VoidKillTargets) do set[p] = true end
+    for p, _ in pairs(SKillTargets) do set[p] = true end
+    for p, _ in pairs(SpawnCloneTargets) do set[p] = true end
+    for p, _ in pairs(StealArmTargets) do set[p] = true end
+    for p, _ in pairs(WeldKillTargets) do set[p] = true end
+    for p, _ in pairs(FireInterestTargets) do set[p] = true end
+    local list = {}
+    for p, _ in pairs(set) do table.insert(list, p) end
+    return list
+end
+
+local function applyFireInterestToPlayer(t)
+    if FireInterestTargets[t] then return end
+    FireInterestTargets[t] = true
+    if FireInterestLoops[t.Name] then FireInterestLoops[t.Name]:Disconnect() end
+    FireInterestLoops[t.Name] = RS.Heartbeat:Connect(function()
+        if not FireInterestTargets[t] then if FireInterestLoops[t.Name] then FireInterestLoops[t.Name]:Disconnect(); FireInterestLoops[t.Name] = nil end return end
+        local char = LP.Character; if not char then return end
+        local heldTool = char:FindFirstChildOfClass("Tool"); if not heldTool then return end
+        local handle = heldTool:FindFirstChild("Handle"); if not handle then return end
+        local tc = t.Character; if not tc then return end
+        local tp = tc:FindFirstChild("Torso") or tc:FindFirstChild("HumanoidRootPart"); if not tp then return end
+        pcall(function() firetouchinterest(handle, tp, 0); task.wait(); firetouchinterest(handle, tp, 1) end)
+    end)
+end
 
 createToggle(0, -60, "Kill Aura", Color3.fromRGB(255,50,50), false, function()
     KillAuraActive = not KillAuraActive
@@ -803,10 +855,33 @@ createToggle(0, -60, "Kill Aura", Color3.fromRGB(255,50,50), false, function()
     end
     return KillAuraActive
 end)
-createToggle(0, -30, "R-Spam", Color3.fromRGB(150,30,30), false, function() RocketSpamActive = not RocketSpamActive; if not RocketSpamActive then table.clear(RocketTargets); table.clear(RocketLastKnownPos) end; refreshPlayerColors(); return RocketSpamActive end)
-createToggle(0, 0, "S-Kill", Color3.fromRGB(40,110,150), false, function() SKillActive = not SKillActive; if not SKillActive then clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) end; refreshPlayerColors(); return SKillActive end)
+createToggle(0, -30, "R-Spam", Color3.fromRGB(150,30,30), false, function() 
+    RocketSpamActive = not RocketSpamActive
+    if not RocketSpamActive then 
+        table.clear(RocketTargets); table.clear(RocketLastKnownPos) 
+    else
+        for _, p in ipairs(getHighlightedPlayers()) do RocketTargets[p.UserId] = true end
+    end
+    refreshPlayerColors()
+    return RocketSpamActive 
+end)
+createToggle(0, 0, "S-Kill", Color3.fromRGB(40,110,150), false, function() 
+    SKillActive = not SKillActive
+    if not SKillActive then 
+        clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords) 
+    else
+        for _, p in ipairs(getHighlightedPlayers()) do
+            if not SKillTargets[p] then
+                local fakeBtn = {Text="", BackgroundColor3=Color3.new(), Parent=SF}
+                toggleTargetSkill(fakeBtn, p, "BoneSword", SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords)
+            end
+        end
+    end
+    refreshPlayerColors()
+    return SKillActive 
+end)
 
-local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-360), Color3.fromRGB(40,70,40))
+local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-390), Color3.fromRGB(40,70,40))
 THB.MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if r then
@@ -829,10 +904,10 @@ THB.MouseButton1Click:Connect(function()
     end
 end)
 
-createToggle(0.5, -330, "Noclip", Color3.fromRGB(120,40,120), false, function() NoclipActive = not NoclipActive; return NoclipActive end)
-createToggle(0.5, -300, "Spawn Clone", Color3.fromRGB(40,120,40), false, function() SpawnCloneActive = not SpawnCloneActive; if not SpawnCloneActive then table.clear(SpawnCloneTargets) end; refreshPlayerColors(); return SpawnCloneActive end)
+createToggle(0.5, -360, "Noclip", Color3.fromRGB(120,40,120), false, function() NoclipActive = not NoclipActive; return NoclipActive end)
+createToggle(0.5, -330, "Spawn Clone", Color3.fromRGB(40,120,40), false, function() SpawnCloneActive = not SpawnCloneActive; if not SpawnCloneActive then table.clear(SpawnCloneTargets) end; refreshPlayerColors(); return SpawnCloneActive end)
 
-local TPCloneBtn = makeBtn(MF, "TP Clone", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-270), Color3.fromRGB(50,50,50)); TPCloneBtn.TextSize = 11
+local TPCloneBtn = makeBtn(MF, "TP Clone", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-300), Color3.fromRGB(50,50,50)); TPCloneBtn.TextSize = 11
 TPCloneBtn.MouseButton1Click:Connect(function()
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     local tc = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone")
@@ -856,7 +931,7 @@ TPCloneBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-createToggle(0.5, -240, "Anti-Pickup", Color3.fromRGB(40,120,40), false, function()
+createToggle(0.5, -270, "Anti-Pickup", Color3.fromRGB(40,120,40), false, function()
     AntiPickupActive = not AntiPickupActive
     if AntiPickupActive then
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
@@ -882,10 +957,23 @@ createToggle(0.5, -240, "Anti-Pickup", Color3.fromRGB(40,120,40), false, functio
     return AntiPickupActive
 end)
 
-createToggle(0.5, -210, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -50000 or (NullDesyncActive and -9e9 or -500); return AntiVoidActive end)
-createToggle(0.5, -180, "Steal Arm", Color3.fromRGB(140,90,20), false, function() StealArmActive = not StealArmActive; if not StealArmActive then table.clear(StealArmTargets) end; refreshPlayerColors(); return StealArmActive end)
+createToggle(0.5, -240, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -50000 or (NullDesyncActive and -9e9 or -500); return AntiVoidActive end)
+createToggle(0.5, -210, "Steal Arm", Color3.fromRGB(140,90,20), false, function() 
+    StealArmActive = not StealArmActive
+    if not StealArmActive then 
+        table.clear(StealArmTargets) 
+    else
+        local hl = getHighlightedPlayers()
+        if hl[1] then 
+            StealArmTargets[hl[1]] = true
+            task.delay(0.2, function() if StealArmTargets[hl[1]] then StealArmTargets[hl[1]] = nil; refreshPlayerColors() end end)
+        end
+    end
+    refreshPlayerColors()
+    return StealArmActive 
+end)
 
-local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-150), Color3.fromRGB(50,50,50)); AASB.TextSize = 11
+local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-180), Color3.fromRGB(50,50,50)); AASB.TextSize = 11
 local function activateAntiArm()
     if isAntiStealing then return end
     isAntiStealing, AASB.BackgroundColor3, AASB.Text = true, Color3.fromRGB(120,30,30), "GLITCHING ARMS..."
@@ -912,14 +1000,34 @@ local function activateAntiArm()
 end
 AASB.MouseButton1Click:Connect(activateAntiArm)
 
-createToggle(0.5, -120, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
-createToggle(0.5, -90, "Supernova", Color3.fromRGB(150,80,40), false, function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
+createToggle(0.5, -150, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
+createToggle(0.5, -120, "Supernova", Color3.fromRGB(150,80,40), false, function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
+
+local DelGearBtn = makeBtn(MF, "Delete Gear", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-90), Color3.fromRGB(50,50,50)); DelGearBtn.TextSize = 11
+DelGearBtn.MouseButton1Click:Connect(function()
+    local char = LP.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        local nm = tool.Name
+        tool:Destroy()
+        local oldTxt, oldCol = DelGearBtn.Text, DelGearBtn.BackgroundColor3
+        DelGearBtn.Text, DelGearBtn.BackgroundColor3 = "DELETED: "..nm, Color3.fromRGB(150,40,40)
+        task.delay(1, function() if DelGearBtn and DelGearBtn.Parent then DelGearBtn.Text, DelGearBtn.BackgroundColor3 = oldTxt, oldCol end end)
+    else
+        local oldTxt, oldCol = DelGearBtn.Text, DelGearBtn.BackgroundColor3
+        DelGearBtn.Text, DelGearBtn.BackgroundColor3 = "NO TOOL", Color3.fromRGB(150,40,40)
+        task.delay(1, function() if DelGearBtn and DelGearBtn.Parent then DelGearBtn.Text, DelGearBtn.BackgroundColor3 = oldTxt, oldCol end end)
+    end
+end)
 
 createToggle(0.5, -60, "Fire Interest", Color3.fromRGB(200,50,200), false, function()
     FireInterestActive = not FireInterestActive
     if not FireInterestActive then
         for _, l in pairs(FireInterestLoops) do if l then l:Disconnect() end end
         table.clear(FireInterestLoops); table.clear(FireInterestTargets)
+    else
+        for _, p in ipairs(getHighlightedPlayers()) do applyFireInterestToPlayer(p) end
     end
     refreshPlayerColors()
     return FireInterestActive
