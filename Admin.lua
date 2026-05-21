@@ -513,10 +513,7 @@ end
 ---------------------------------------------------------
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Enum.KeyCode.B then 
-        AutoRocketEnabled = not AutoRocketEnabled
-        print("Auto Rocket Active: ", AutoRocketEnabled)
-    elseif input.KeyCode == Enum.KeyCode.X then
+    if input.KeyCode == Enum.KeyCode.X then
         runGiveAll()
     elseif input.KeyCode == Enum.KeyCode.RightBracket then
         if SP_Panel.Visible then
