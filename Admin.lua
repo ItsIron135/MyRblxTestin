@@ -578,7 +578,7 @@ RS.Heartbeat:Connect(function()
                     KillAuraDebounces[p] = true
                     local equipped = 0
                     for _, t in ipairs(char:GetChildren()) do if t.Name == "TriLaserGun" then equipped += 1 end end
-                    if bp and equipped < 2 then
+                    if bp and equipped < 4 then
                         for _, tool in ipairs(bp:GetChildren()) do
                             if tool.Name == "TriLaserGun" then tool.Parent = char; equipped += 1; if equipped >= 2 then break end end
                         end
@@ -588,7 +588,7 @@ RS.Heartbeat:Connect(function()
                         for _, g in ipairs(char:GetChildren()) do
                             if g.Name == "TriLaserGun" and g:FindFirstChild("Click") then g.Click:FireServer(tt.Position) end
                         end
-                        task.delay(0.5, function()
+                        task.delay(1, function()
                             if tt then tt.Anchored = false end
                             KillAuraDebounces[p] = false
                             local cbp = LP:FindFirstChild("Backpack")
