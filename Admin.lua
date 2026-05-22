@@ -384,7 +384,7 @@ local function stopNullDesync()
     NullDesyncActive, nullWeldOverride = false, nil
     if nullDesyncLoop then nullDesyncLoop:Disconnect(); nullDesyncLoop = nil end 
     if nullCamPart then nullCamPart:Destroy(); nullCamPart = nil end
-    workspace.FallenPartsDestroyHeight = AntiVoidActive and -50000 or -500
+    workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or -500
     local char = LP.Character
     local hum, root = char and char:FindFirstChildOfClass("Humanoid"), char and char:FindFirstChild("HumanoidRootPart")
     if char and hum and root then 
@@ -885,13 +885,7 @@ local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-390
 THB.MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if r then
-        local thc = nil
-        local so = LP:FindFirstChild("Spawn")
-        if so and so.Value then
-            local sg = workspace:FindFirstChild(tostring(so.Value))
-            if sg and sg:FindFirstChild("SpawnLocation") then thc = sg.SpawnLocation.CFrame + Vector3.new(0,4,0) end
-        end
-        thc = thc or homeCFrame
+        local thc = homeCFrame
         if thc then 
             if env.desyncActive then env.fakeCF, env.realCF = thc, thc
             elseif NullDesyncActive then nullSavedCF = thc
@@ -957,7 +951,7 @@ createToggle(0.5, -270, "Anti-Pickup", Color3.fromRGB(40,120,40), false, functio
     return AntiPickupActive
 end)
 
-createToggle(0.5, -240, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -50000 or (NullDesyncActive and -9e9 or -500); return AntiVoidActive end)
+createToggle(0.5, -240, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or (NullDesyncActive and -9e9 or -500); return AntiVoidActive end)
 createToggle(0.5, -210, "Steal Arm", Color3.fromRGB(140,90,20), false, function() 
     StealArmActive = not StealArmActive
     if not StealArmActive then 
@@ -1291,15 +1285,26 @@ RS.Stepped:Connect(function() if NoclipActive and LP.Character then for _, p in 
 LP.CharacterAdded:Connect(function(c) if NullDesyncActive then task.wait(0.5); startNullDesync(c) end end)
 
 task.spawn(function()
-    workspace.FallenPartsDestroyHeight = -50000
+    workspace.FallenPartsDestroyHeight = -9e9
     local root = (LP.Character or LP.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 5)
     if root then
-        local closest, cd = nil, math.huge
-        for i = 1, 8 do
-            local loc = workspace:FindFirstChild("Spawn"..i) and workspace:FindFirstChild("Spawn"..i):FindFirstChild("SpawnLocation")
-            if loc and loc:IsA("BasePart") and (loc.Position - root.Position).Magnitude < cd then cd, closest = (loc.Position - root.Position).Magnitude, loc end
+        local found = nil
+        -- First try the player's assigned spawn (one-time scan, saved permanently)
+        local so = LP:FindFirstChild("Spawn")
+        if so and so.Value then
+            local sg = workspace:FindFirstChild(tostring(so.Value))
+            if sg and sg:FindFirstChild("SpawnLocation") then found = sg.SpawnLocation.CFrame + Vector3.new(0,4,0) end
         end
-        if closest then homeCFrame = closest.CFrame + Vector3.new(0,4,0) end
+        -- Fallback: closest SpawnLocation
+        if not found then
+            local closest, cd = nil, math.huge
+            for i = 1, 8 do
+                local loc = workspace:FindFirstChild("Spawn"..i) and workspace:FindFirstChild("Spawn"..i):FindFirstChild("SpawnLocation")
+                if loc and loc:IsA("BasePart") and (loc.Position - root.Position).Magnitude < cd then cd, closest = (loc.Position - root.Position).Magnitude, loc end
+            end
+            if closest then found = closest.CFrame + Vector3.new(0,4,0) end
+        end
+        if found then homeCFrame = found end
     end
     if NullDesyncActive and LP.Character then task.wait(0.5); startNullDesync(LP.Character) end
     task.wait(3)
