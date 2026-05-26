@@ -12,7 +12,7 @@ if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
 
 ---------------------------------------------------------
 -- STATE
----------------------------------------------------------
+---------------------------------------------------------	
 local env = getgenv()
 env.desyncActive, env.fakeCF, env.realCF = env.desyncActive or false, env.fakeCF or CFrame.new(), env.realCF or CFrame.new()
 
@@ -38,11 +38,30 @@ hiddenToolsCache.Name = "AntiPickupCache"
 local UsedSwords, LatestClone = {}, nil
 local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=1,["Mini-StarShard"]=1,CrimsonPillar=1,Pulse=1}
 local homeCFrame = CFrame.new(0, 10, 0)
+local homeTPLoop = nil
+local SPAWN_COORDS = {
+    Spawn1 = CFrame.new(-1312, 193, 205),
+    Spawn2 = CFrame.new(-1312, 193, -23),
+    Spawn3 = CFrame.new(-1155, 193, -179),
+    Spawn4 = CFrame.new(-927, 193, -179),
+    Spawn5 = CFrame.new(-770, 193, -22),
+    Spawn6 = CFrame.new(-770, 193, 205),
+    Spawn7 = CFrame.new(-927, 193, 361),
+    Spawn8 = CFrame.new(-1155, 193, 361),
+}
+local function getHomeFromSpawnValue()
+    local so = LP:FindFirstChild("Spawn")
+    if so and so.Value then
+        local c = SPAWN_COORDS[tostring(so.Value)]
+        if c then return c end
+    end
+    return nil
+end
 
 local giveAllRunning = false
-local GIVE_ALL_NORMAL_DELAY = 0.05
+local GIVE_ALL_NORMAL_DELAY = 0.02
 local GIVE_ALL_BURST_TIME = 0.05
-local GIVE_ALL_BURST_AMOUNT = 120
+local GIVE_ALL_BURST_AMOUNT = 60
 local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlock","SpawnLuckyBlock","SpawnGalaxyBlock"}
 
 ---------------------------------------------------------
@@ -447,15 +466,42 @@ end
 ---------------------------------------------------------
 -- ROCKET SPAM & DESYNC
 ---------------------------------------------------------
-local function getFR()
-    local char, bp = LP.Character, LP:FindFirstChild("Backpack")
-    local RJ = (bp and bp:FindFirstChild("RocketJumper")) or (char and char:FindFirstChild("RocketJumper"))
-    return RJ and RJ:FindFirstChild("FireRocket")
-end
+local ROCKET_MULTIPLIER = 1 -- How many times to fire PER launcher, PER frame. (Increase if you want it even faster!)
 
 local function fireRocketAt(pos)
-    local FR = getFR()
-    if FR then FR:FireServer(pos, pos + Vector3.new(0.002,0.002,0.002)) end
+    local char, bp = LP.Character, LP:FindFirstChild("Backpack")
+    local launchers = {}
+    
+    -- 1. Gather ALL RocketJumpers in the Character (Equipped)
+    if char then
+        for _, tool in ipairs(char:GetChildren()) do
+            if tool.Name == "RocketJumper" and tool:FindFirstChild("FireRocket") then
+                table.insert(launchers, tool.FireRocket)
+            end
+        end
+    end
+    
+    -- 2. Gather ALL RocketJumpers in the Backpack (Unequipped)
+    if bp then
+        for _, tool in ipairs(bp:GetChildren()) do
+            if tool.Name == "RocketJumper" and tool:FindFirstChild("FireRocket") then
+                table.insert(launchers, tool.FireRocket)
+            end
+        end
+    end
+    
+    -- 3. Fire every single launcher multiple times instantly
+    local targetPos2 = pos + Vector3.new(0.002, 0.002, 0.002)
+    for _, FR in ipairs(launchers) do
+        for i = 1, ROCKET_MULTIPLIER do
+            -- Using task.spawn prevents the loop from yielding if the remote takes a microsecond to process
+            task.spawn(function()
+                pcall(function()
+                    FR:FireServer(pos, targetPos2)
+                end)
+            end)
+        end
+    end
 end
 
 task.spawn(function()
@@ -1235,6 +1281,7 @@ CB.MouseButton1Click:Connect(function()
     if antiPickupCharConn then antiPickupCharConn:Disconnect(); antiPickupCharConn = nil end
     if antiPickupBpConn then antiPickupBpConn:Disconnect(); antiPickupBpConn = nil end
     if BoneSwordTouchLoop then BoneSwordTouchLoop:Disconnect(); BoneSwordTouchLoop = nil end
+    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
     AntiPickupActive, isGodMode, VoidKillActive, SpawnCloneActive, FireInterestActive, KillAuraActive = false, false, false, false, false, false
     giveAllRunning = false
     clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords)
@@ -1282,20 +1329,52 @@ end)
 
 RS.Stepped:Connect(function() if NoclipActive and LP.Character then for _, p in ipairs(LP.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end end)
 
-LP.CharacterAdded:Connect(function(c) if NullDesyncActive then task.wait(0.5); startNullDesync(c) end end)
+---------------------------------------------------------
+-- HOME TP LOOP (loops to home for 1s after respawn when NOT in null desync)
+---------------------------------------------------------
+local function handleHomeTP(char)
+    local hum = char:WaitForChild("Humanoid", 5)
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    if not hum or not root then return end
+    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+    local hardCoord = getHomeFromSpawnValue()
+    if hardCoord then homeCFrame = hardCoord end
+    if not NullDesyncActive then
+        local endTime = tick() + 1.0
+        homeTPLoop = RS.Heartbeat:Connect(function()
+            if NullDesyncActive then
+                if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+                return
+            end
+            if root and root.Parent then root.CFrame = homeCFrame end
+            if tick() >= endTime then
+                if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+            end
+        end)
+    end
+end
+
+LP.CharacterAdded:Connect(function(c)
+    if NullDesyncActive then task.wait(0.5); startNullDesync(c) end
+    task.spawn(function() handleHomeTP(c) end)
+end)
+
+if LP.Character then
+    task.spawn(function() handleHomeTP(LP.Character) end)
+end
 
 task.spawn(function()
     workspace.FallenPartsDestroyHeight = -9e9
     local root = (LP.Character or LP.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 5)
     if root then
-        local found = nil
-        -- First try the player's assigned spawn (one-time scan, saved permanently)
-        local so = LP:FindFirstChild("Spawn")
-        if so and so.Value then
-            local sg = workspace:FindFirstChild(tostring(so.Value))
-            if sg and sg:FindFirstChild("SpawnLocation") then found = sg.SpawnLocation.CFrame + Vector3.new(0,4,0) end
+        local found = getHomeFromSpawnValue()
+        if not found then
+            local so = LP:FindFirstChild("Spawn")
+            if so and so.Value then
+                local sg = workspace:FindFirstChild(tostring(so.Value))
+                if sg and sg:FindFirstChild("SpawnLocation") then found = sg.SpawnLocation.CFrame + Vector3.new(0,4,0) end
+            end
         end
-        -- Fallback: closest SpawnLocation
         if not found then
             local closest, cd = nil, math.huge
             for i = 1, 8 do
