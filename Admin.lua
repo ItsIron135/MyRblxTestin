@@ -36,6 +36,7 @@ local AntiPickupActive, hiddenTools, antiPickupConnection, antiPickupCharConn, a
 local allowedTools, hiddenToolsCache = {}, Instance.new("Folder")
 hiddenToolsCache.Name = "AntiPickupCache"
 local UsedSwords, LatestClone = {}, nil
+local usedPeris, usedIvories = {}, {}  -- track used RainbowPeriastron / IvoryPeriastron copies
 local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=1,["Mini-StarShard"]=1,CrimsonPillar=1,Pulse=1}
 local homeCFrame = CFrame.new(0, 10, 0)
 local homeTPLoop = nil
@@ -261,29 +262,58 @@ local function toggleTargetSkill(btn, t, swordName, targetMap, loopMap, trackerM
 end
  
 local function consistentWeldTPGive(tp)
-    local root = LP.Character and (LP.Character:FindFirstChild("HumanoidRootPart") or LP.Character:FindFirstChild("Torso"))
-    local targetTorso = tp.Character and tp.Character:FindFirstChild("Torso")
-    if not root or not targetTorso then return end
-    local gears, welds, originalCFrame = {}, {}, root.CFrame
-    for _, item in ipairs(workspace:GetChildren()) do
-        if item:IsA("Tool") then
-            local h = item:FindFirstChild("Handle")
-            if h and h:IsA("BasePart") then
-                h.Anchored, h.CanCollide, h.Massless, h.CFrame = false, false, true, root.CFrame
-                local w = Instance.new("WeldConstraint"); w.Part0, w.Part1, w.Parent = root, h, root
-                table.insert(gears, h); table.insert(welds, w)
+    -- Dumps gears that are "dropped but still linked to my character" (handles in workspace,
+    -- still welded/owned by me) onto the target so they pick them up.
+    local tChar = tp.Character
+    local tRoot = tChar and (tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChild("Torso"))
+    local char = LP.Character
+    if not tRoot or not char then return end
+ 
+    local myParts = {}
+    for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then myParts[p] = true end end
+ 
+    local handles = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name == "Handle" then
+            local tool = obj.Parent
+            if tool and tool:IsA("Tool") then
+                local linked = false
+                for _, j in ipairs(obj:GetChildren()) do
+                    if (j:IsA("Weld") or j:IsA("WeldConstraint") or j:IsA("Motor6D") or j:IsA("JointInstance")) then
+                        if (j.Part0 and myParts[j.Part0]) or (j.Part1 and myParts[j.Part1]) then linked = true; break end
+                    end
+                end
+                if not linked and tool:IsDescendantOf(char) then linked = true end
+                if linked then table.insert(handles, obj) end
             end
         end
     end
-    if #gears == 0 then return end
+    -- also any tool still parented to my character with a handle
+    for _, t in ipairs(char:GetChildren()) do
+        if t:IsA("Tool") then
+            local h = t:FindFirstChild("Handle")
+            if h then
+                local dup = false
+                for _, e in ipairs(handles) do if e == h then dup = true; break end end
+                if not dup then table.insert(handles, h) end
+            end
+        end
+    end
+    if #handles == 0 then return end
+ 
     task.spawn(function()
         local s = tick()
-        while tick() - s < 1.5 do
-            if root and targetTorso and targetTorso.Parent then root.CFrame = targetTorso.CFrame end
+        while tick() - s < 1.2 do
+            local tpRoot = tChar and (tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChild("Torso"))
+            if not tpRoot then break end
+            for _, h in ipairs(handles) do
+                if h and h.Parent then
+                    pcall(function() h.CFrame = tpRoot.CFrame; h.AssemblyLinearVelocity = Vector3.new() end)
+                    pcall(function() if firetouchinterest then firetouchinterest(h, tpRoot, 0); firetouchinterest(h, tpRoot, 1) end end)
+                end
+            end
             RS.Heartbeat:Wait()
         end
-        for _, w in ipairs(welds) do if w then w:Destroy() end end
-        if root then root.CFrame = originalCFrame end
     end)
 end
  
@@ -699,6 +729,19 @@ createToggle(0, -300, "Perm Desync", Color3.fromRGB(40,100,150), false, function
     if root:FindFirstChild("FlyVelocity") then root.FlyVelocity:Destroy() end
     if root:FindFirstChild("FlyGyro") then root.FlyGyro:Destroy() end
     do
+        local lockCF = root.CFrame
+        local bg = set(Instance.new("BodyGyro", root), {
+            MaxTorque = Vector3.new(9e9, 9e9, 9e9),
+            P = 9e7,
+            D = 100,
+            CFrame = lockCF
+        })
+        local bpos = set(Instance.new("BodyPosition", root), {
+            MaxForce = Vector3.new(9e9, 9e9, 9e9),
+            P = 9e7,
+            D = 200,
+            Position = lockCF.Position
+        })
         local carpet = (LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild("RainbowMagicCarpet")) or char:FindFirstChild("RainbowMagicCarpet")
         if carpet then hum:EquipTool(carpet); task.wait(0.1); carpet:Activate(); task.wait(0.05); hum:UnequipTools() end
     end
@@ -817,13 +860,23 @@ GodBtn.MouseButton1Click:Connect(activateGodMode)
  
 local PeriBtn = makeBtn(MF, "Peri Laser", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-120), Color3.fromRGB(50,50,50)); PeriBtn.TextSize = 11
 PeriBtn.MouseButton1Click:Connect(function()
-    local pth = workspace:FindFirstChild(LP.Name) 
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local bp = LP:FindFirstChild("Backpack")
+    -- find an unused RainbowPeriastron (character first, then backpack)
+    local peri
+    if char then for _, t in ipairs(char:GetChildren()) do if t.Name == "RainbowPeriastron" and not usedPeris[t] then peri = t; break end end end
+    if not peri and bp then for _, t in ipairs(bp:GetChildren()) do if t.Name == "RainbowPeriastron" and not usedPeris[t] then peri = t; break end end end
+    if not char or not hum or not peri then return end
+    hum:EquipTool(peri)
+    task.wait(0.1)
+    local pth = workspace:FindFirstChild(LP.Name)
     if pth and pth:FindFirstChild("RainbowPeriastron") and pth.RainbowPeriastron:FindFirstChild("Server") and pth.RainbowPeriastron.Server:FindFirstChild("RainBeam") then
         local ls = pth.RainbowPeriastron.Server.RainBeam:FindFirstChild("LoopSound")
         if ls then ls:Destroy() end
     end
-    local tool = (LP.Character and LP.Character:FindFirstChild("RainbowPeriastron")) or (LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild("RainbowPeriastron"))
-    if tool and tool:FindFirstChild("Remote") then tool.Remote:FireServer(Enum.KeyCode.Q) end
+    if peri:FindFirstChild("Remote") then peri.Remote:FireServer(Enum.KeyCode.Q) end
+    usedPeris[peri] = true
 end)
  
 local HatDropBtn = makeBtn(MF, "Hat Drop", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-90), Color3.fromRGB(50,50,50)); HatDropBtn.TextSize = 11
@@ -918,7 +971,7 @@ local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-390
 THB.MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if r then
-        local thc = homeCFrame
+        local thc = homeCFrame and (homeCFrame * CFrame.Angles(0, math.rad(-90), 0))  -- face 90 deg right
         if thc then 
             if env.desyncActive then env.fakeCF, env.realCF = thc, thc
             elseif NullDesyncActive then nullSavedCF = thc
@@ -1027,8 +1080,78 @@ local function activateAntiArm()
 end
 AASB.MouseButton1Click:Connect(activateAntiArm)
  
-createToggle(0.5, -150, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
-createToggle(0.5, -120, "Supernova", Color3.fromRGB(150,80,40), false, function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
+createToggle(0.5, -150, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function()
+    IsAntiLaser = not IsAntiLaser
+    return IsAntiLaser
+end)
+
+local SupernovaBtn = makeBtn(
+    MF,
+    "Supernova",
+    UDim2.new(0.5,0,0,30),
+    UDim2.new(0.5,0,1,-120),
+    Color3.fromRGB(50,50,50)
+)
+
+SupernovaBtn.TextSize = 11
+
+SupernovaBtn.MouseButton1Click:Connect(function()
+    if InfSupernovaActive then return end
+
+    local char = LP.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local bp = LP:FindFirstChild("Backpack")
+
+    -- find an unused IvoryPeriastron character first, then backpack
+    local ivory
+
+    if char then
+        for _, t in ipairs(char:GetChildren()) do
+            if t.Name == "IvoryPeriastron" and not usedIvories[t] then
+                ivory = t
+                break
+            end
+        end
+    end
+
+    if not ivory and bp then
+        for _, t in ipairs(bp:GetChildren()) do
+            if t.Name == "IvoryPeriastron" and not usedIvories[t] then
+                ivory = t
+                break
+            end
+        end
+    end
+
+    if not char or not hum or not ivory then
+        local old = SupernovaBtn.Text
+        SupernovaBtn.Text = "NO UNUSED IVORY"
+
+        task.delay(1, function()
+            if SupernovaBtn and SupernovaBtn.Parent then
+                SupernovaBtn.Text = old
+            end
+        end)
+
+        return
+    end
+
+    -- start the 2 second background loop immediately
+    InfSupernovaActive = true
+
+    task.delay(2, function()
+        InfSupernovaActive = false
+    end)
+
+    -- the rest of the logic now runs DURING the 2 second loop
+    hum:EquipTool(ivory)
+    task.wait(0.1)
+
+    if ivory and ivory.Parent and ivory:FindFirstChild("Remote") then
+        ivory.Remote:FireServer(Enum.KeyCode.Q)
+        usedIvories[ivory] = true
+    end
+end)
  
 local DelGearBtn = makeBtn(MF, "Delete Gear", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-90), Color3.fromRGB(50,50,50)); DelGearBtn.TextSize = 11
 DelGearBtn.MouseButton1Click:Connect(function()
@@ -1268,7 +1391,7 @@ CB.MouseButton1Click:Connect(function()
     if antiPickupCharConn then antiPickupCharConn:Disconnect(); antiPickupCharConn = nil end
     if antiPickupBpConn then antiPickupBpConn:Disconnect(); antiPickupBpConn = nil end
     if BoneSwordTouchLoop then BoneSwordTouchLoop:Disconnect(); BoneSwordTouchLoop = nil end
-    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+    if homeTPLoop then pcall(function() task.cancel(homeTPLoop) end); homeTPLoop = nil end
     AntiPickupActive, isGodMode, VoidKillActive, SpawnCloneActive, FireInterestActive, KillAuraActive = false, false, false, false, false, false
     giveAllRunning = false
     clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords)
@@ -1323,20 +1446,18 @@ local function handleHomeTP(char)
     local hum = char:WaitForChild("Humanoid", 5)
     local root = char:WaitForChild("HumanoidRootPart", 5)
     if not hum or not root then return end
-    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+    if homeTPLoop then pcall(function() task.cancel(homeTPLoop) end); homeTPLoop = nil end
     local hardCoord = getHomeFromSpawnValue()
     if hardCoord then homeCFrame = hardCoord end
     if not NullDesyncActive then
-        local endTime = tick() + 1.0
-        homeTPLoop = RS.Heartbeat:Connect(function()
-            if NullDesyncActive then
-                if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
-                return
+        -- Less aggressive: a few spaced TPs instead of every-frame. Rotate 90 deg right.
+        homeTPLoop = task.spawn(function()
+            for i = 1, 6 do
+                if NullDesyncActive then break end
+                if root and root.Parent then root.CFrame = homeCFrame * CFrame.Angles(0, math.rad(-90), 0) end
+                task.wait(0.15)
             end
-            if root and root.Parent then root.CFrame = homeCFrame end
-            if tick() >= endTime then
-                if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
-            end
+            homeTPLoop = nil
         end)
     end
 end
@@ -1376,7 +1497,17 @@ task.spawn(function()
     task.wait(3)
     local FAR = CFrame.new(99999,99999,99999)
     for _, v in ipairs(workspace:GetDescendants()) do if v.Name == "SpawnWalls" and v:IsA("BasePart") then v.CFrame, v.Anchored, v.CanCollide = FAR, true, false end end
-    task.wait(4)
+end)
+ 
+-- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
+task.spawn(function()
+    task.wait(1.5)
+    runGiveAll()
+    repeat task.wait(0.1) until not giveAllRunning   -- wait for first to finish
+    task.wait(2)
+    runGiveAll()
+    repeat task.wait(0.1) until not giveAllRunning   -- wait for second to finish
+    task.wait(2)
     do
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1389,9 +1520,4 @@ task.spawn(function()
         end
     end
     activateAntiArm()
-end)
- 
-task.spawn(function()
-    task.wait(1.5)
-    runGiveAll()
 end)
