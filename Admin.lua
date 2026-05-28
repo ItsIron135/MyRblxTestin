@@ -1,5 +1,4 @@
---[[ CBM'S ADMIN PANEL ]]
---
+--[[ CBM'S ADMIN PANEL ]]--
 
 ---------------------------------------------------------
 -- SERVICES & VARIABLES
