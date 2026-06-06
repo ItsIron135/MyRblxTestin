@@ -1,21 +1,21 @@
 --[[ CBM'S ADMIN PANEL ]]--
- 
+
 ---------------------------------------------------------
 -- SERVICES & VARIABLES
 ---------------------------------------------------------
 local getgenv = getgenv or function() return _G end
 getgenv().IsDroppingGears = false 
- 
+
 local P, LP, RS, RP, UIS = game:GetService("Players"), game:GetService("Players").LocalPlayer, game:GetService("RunService"), game:GetService("ReplicatedStorage"), game:GetService("UserInputService")
 local cam, PG = workspace.CurrentCamera, LP:FindFirstChild("PlayerGui") or LP:WaitForChild("PlayerGui", 5)
 if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
- 
+
 ---------------------------------------------------------
 -- STATE
 ---------------------------------------------------------	
 local env = getgenv()
 env.desyncActive, env.fakeCF, env.realCF = env.desyncActive or false, env.fakeCF or CFrame.new(), env.realCF or CFrame.new()
- 
+
 local BoneSwordTouchLoop, renderConn, steppedConn, heartbeatConn, ghostConn, nullDesyncLoop = nil
 local Flying, FlySpeed = false, 100
 local NoclipActive, GhostTouchActive, GiveDroppedGearActive, IsStackingActive, isGodMode, InfSupernovaActive, isAntiStealing = false, false, false, false, false, false, false
@@ -36,7 +36,6 @@ local AntiPickupActive, hiddenTools, antiPickupConnection, antiPickupCharConn, a
 local allowedTools, hiddenToolsCache = {}, Instance.new("Folder")
 hiddenToolsCache.Name = "AntiPickupCache"
 local UsedSwords, LatestClone = {}, nil
-local usedPeris, usedIvories = {}, {}  -- track used RainbowPeriastron / IvoryPeriastron copies
 local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=1,["Mini-StarShard"]=1,CrimsonPillar=1,Pulse=1}
 local homeCFrame = CFrame.new(0, 10, 0)
 local homeTPLoop = nil
@@ -58,18 +57,18 @@ local function getHomeFromSpawnValue()
     end
     return nil
 end
- 
+
 local giveAllRunning = false
 local GIVE_ALL_NORMAL_DELAY = 0.02
 local GIVE_ALL_BURST_TIME = 0.05
 local GIVE_ALL_BURST_AMOUNT = 60
 local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlock","SpawnLuckyBlock","SpawnGalaxyBlock"}
- 
+
 ---------------------------------------------------------
 -- CORE UI
 ---------------------------------------------------------
 local function set(o, t) for k,v in pairs(t) do o[k] = v end return o end
- 
+
 local SG = set(Instance.new("ScreenGui", PG), {Name="StealerUI", ResetOnSpawn=false})
 local MF = set(Instance.new("Frame", SG), {Size=UDim2.new(0,240,0,610), Position=UDim2.new(0.85,-120,0.5,-200), BackgroundColor3=Color3.fromRGB(35,35,35), Active=true, Draggable=true, BorderSizePixel=0})
 set(Instance.new("TextLabel", MF), {Size=UDim2.new(1,-30,0,30), BackgroundTransparency=1, Text="Admin Panel", TextColor3=Color3.new(0.9,0.9,0.9), Font=Enum.Font.Code, TextSize=14})
@@ -78,7 +77,7 @@ local SF = set(Instance.new("ScrollingFrame", MF), {Size=UDim2.new(1,0,1,-440), 
 local UIList = Instance.new("UIListLayout", SF)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() SF.CanvasSize = UDim2.new(0,0,0,UIList.AbsoluteContentSize.Y) end)
- 
+
 -- SPECTATE PANEL
 local SP_Panel = set(Instance.new("Frame", SG), {Size=UDim2.new(0,200,0,400), Position=UDim2.new(0.5,-100,0.5,-200), BackgroundColor3=Color3.fromRGB(25,25,25), Visible=false, Active=true, Draggable=true})
 Instance.new("UICorner", SP_Panel).CornerRadius = UDim.new(0,8)
@@ -88,7 +87,7 @@ local SP_Scroll = set(Instance.new("ScrollingFrame", SP_Panel), {Size=UDim2.new(
 Instance.new("UICorner", SP_Scroll).CornerRadius = UDim.new(0,6)
 local SP_List = Instance.new("UIListLayout", SP_Scroll)
 SP_List.SortOrder, SP_List.Padding = Enum.SortOrder.Name, UDim.new(0,2)
- 
+
 ---------------------------------------------------------
 -- SPECTATE SYSTEM
 ---------------------------------------------------------
@@ -99,18 +98,18 @@ local function startSpectate(p)
     if not originalCamSubject then originalCamSubject = cam.CameraSubject end
     cam.CameraSubject, isSpectating, savedPlayer = h, true, p
 end
- 
+
 local function stopSpectate()
     if originalCamSubject then cam.CameraSubject = originalCamSubject end
     isSpectating = false
 end
- 
+
 local function fullClearSpectate()
     stopSpectate()
     savedPlayer = nil
     originalCamSubject = nil
 end
- 
+
 local function populateSpectateMenu()
     for _, c in ipairs(SP_Scroll:GetChildren()) do if not c:IsA("UIListLayout") then c:Destroy() end end
     for _, p in ipairs(P:GetPlayers()) do
@@ -130,12 +129,12 @@ local function populateSpectateMenu()
     end
     SP_Scroll.CanvasSize = UDim2.new(0,0,0,SP_List.AbsoluteContentSize.Y + 5)
 end
- 
+
 SP_Close.MouseButton1Click:Connect(function()
     SP_Panel.Visible = false
     if isSpectating then stopSpectate() end
 end)
- 
+
 task.spawn(function()
     while true do
         if savedPlayer and isSpectating and savedPlayer.Character then
@@ -145,7 +144,7 @@ task.spawn(function()
         task.wait(0.5)
     end
 end)
- 
+
 ---------------------------------------------------------
 -- HELPERS
 ---------------------------------------------------------
@@ -167,11 +166,11 @@ local function refreshPlayerColors()
         end
     end
 end
- 
+
 local function makeBtn(parent, text, size, pos, bg)
     return set(Instance.new("TextButton", parent), {Size=size, Position=pos, BackgroundColor3=bg, Text=text, TextColor3=Color3.new(0.9,0.9,0.9), Font=Enum.Font.Code, TextSize=12})
 end
- 
+
 local function createToggle(col, yPos, text, activeCol, init, action)
     local btn = makeBtn(MF, text..(init and ": ON" or ": OFF"), UDim2.new(0.5,0,0,30), UDim2.new(col,0,1,yPos), init and activeCol or Color3.fromRGB(50,50,50))
     btn.TextSize = 11
@@ -181,18 +180,18 @@ local function createToggle(col, yPos, text, activeCol, init, action)
     end)
     return btn
 end
- 
+
 local function hideTool(t)
     if t:IsA("Tool") and t.Parent and not t.Parent:FindFirstChild("Humanoid") and not t.Parent:IsA("Backpack") then
         hiddenTools[t], t.Parent = t.Parent, hiddenToolsCache 
     end
 end
- 
+
 local function restoreTools()
     for t, p in pairs(hiddenTools) do if t then pcall(function() t.Parent = p or workspace end) end end
     table.clear(hiddenTools)
 end
- 
+
 local function clearToolTargets(targets, loops, trackers, activeMap)
     for t, _ in pairs(targets) do
         local n = t.Name
@@ -210,7 +209,7 @@ local function clearToolTargets(targets, loops, trackers, activeMap)
     end
     table.clear(targets)
 end
- 
+
 local function attachTool(tPlayer, tool, loopsMap)
     local char = LP.Character
     if not char then return end
@@ -239,7 +238,7 @@ local function attachTool(tPlayer, tool, loopsMap)
         if hum then for _, t in pairs(hum:GetPlayingAnimationTracks()) do if t.Name:lower():find("tool") or (t.Animation and tostring(t.Animation.AnimationId):find("507768375")) then t:Stop() end end end
     end
 end
- 
+
 local function toggleTargetSkill(btn, t, swordName, targetMap, loopMap, trackerMap, activeMap)
     if targetMap[t] then
         clearToolTargets({[t]=true}, loopMap, trackerMap, activeMap); targetMap[t] = nil
@@ -260,63 +259,34 @@ local function toggleTargetSkill(btn, t, swordName, targetMap, loopMap, trackerM
         end
     end
 end
- 
+
 local function consistentWeldTPGive(tp)
-    -- Dumps gears that are "dropped but still linked to my character" (handles in workspace,
-    -- still welded/owned by me) onto the target so they pick them up.
-    local tChar = tp.Character
-    local tRoot = tChar and (tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChild("Torso"))
-    local char = LP.Character
-    if not tRoot or not char then return end
- 
-    local myParts = {}
-    for _, p in ipairs(char:GetDescendants()) do if p:IsA("BasePart") then myParts[p] = true end end
- 
-    local handles = {}
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and obj.Name == "Handle" then
-            local tool = obj.Parent
-            if tool and tool:IsA("Tool") then
-                local linked = false
-                for _, j in ipairs(obj:GetChildren()) do
-                    if (j:IsA("Weld") or j:IsA("WeldConstraint") or j:IsA("Motor6D") or j:IsA("JointInstance")) then
-                        if (j.Part0 and myParts[j.Part0]) or (j.Part1 and myParts[j.Part1]) then linked = true; break end
-                    end
-                end
-                if not linked and tool:IsDescendantOf(char) then linked = true end
-                if linked then table.insert(handles, obj) end
+    local root = LP.Character and (LP.Character:FindFirstChild("HumanoidRootPart") or LP.Character:FindFirstChild("Torso"))
+    local targetTorso = tp.Character and tp.Character:FindFirstChild("Torso")
+    if not root or not targetTorso then return end
+    local gears, welds, originalCFrame = {}, {}, root.CFrame
+    for _, item in ipairs(workspace:GetChildren()) do
+        if item:IsA("Tool") then
+            local h = item:FindFirstChild("Handle")
+            if h and h:IsA("BasePart") then
+                h.Anchored, h.CanCollide, h.Massless, h.CFrame = false, false, true, root.CFrame
+                local w = Instance.new("WeldConstraint"); w.Part0, w.Part1, w.Parent = root, h, root
+                table.insert(gears, h); table.insert(welds, w)
             end
         end
     end
-    -- also any tool still parented to my character with a handle
-    for _, t in ipairs(char:GetChildren()) do
-        if t:IsA("Tool") then
-            local h = t:FindFirstChild("Handle")
-            if h then
-                local dup = false
-                for _, e in ipairs(handles) do if e == h then dup = true; break end end
-                if not dup then table.insert(handles, h) end
-            end
-        end
-    end
-    if #handles == 0 then return end
- 
+    if #gears == 0 then return end
     task.spawn(function()
         local s = tick()
-        while tick() - s < 1.2 do
-            local tpRoot = tChar and (tChar:FindFirstChild("HumanoidRootPart") or tChar:FindFirstChild("Torso"))
-            if not tpRoot then break end
-            for _, h in ipairs(handles) do
-                if h and h.Parent then
-                    pcall(function() h.CFrame = tpRoot.CFrame; h.AssemblyLinearVelocity = Vector3.new() end)
-                    pcall(function() if firetouchinterest then firetouchinterest(h, tpRoot, 0); firetouchinterest(h, tpRoot, 1) end end)
-                end
-            end
+        while tick() - s < 1.5 do
+            if root and targetTorso and targetTorso.Parent then root.CFrame = targetTorso.CFrame end
             RS.Heartbeat:Wait()
         end
+        for _, w in ipairs(welds) do if w then w:Destroy() end end
+        if root then root.CFrame = originalCFrame end
     end)
 end
- 
+
 local function executeSpectralNuke(t, btn)
     local c = LP.Character
     local h, hrp = c and c:FindFirstChild("Humanoid"), c and c:FindFirstChild("HumanoidRootPart")
@@ -353,21 +323,21 @@ local function executeSpectralNuke(t, btn)
         end
     end)
 end
- 
+
 local function giveAllFireOnce()
     for _, n in ipairs(GIVE_ALL_REMOTES) do
         local e = RP:FindFirstChild(n)
         if e then pcall(function() e:FireServer() end) end
     end
 end
- 
+
 local function giveAllFindCarrot()
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
     if bp then local c = bp:FindFirstChild("Carrot"); if c then return c end end
     if char then local c = char:FindFirstChild("Carrot"); if c then return c end end
     return nil
 end
- 
+
 local function runGiveAll()
     if giveAllRunning then return end
     if not GiveAllBtn then return end
@@ -375,16 +345,16 @@ local function runGiveAll()
     local origText, origColor = "Give All", Color3.fromRGB(50,50,50)
     GiveAllBtn.Text = "WAITING CARROT..."
     GiveAllBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 0)
- 
+
     task.spawn(function()
         while giveAllRunning do
             giveAllFireOnce()
             if giveAllFindCarrot() then break end
             task.wait(GIVE_ALL_NORMAL_DELAY)
         end
- 
+
         if not giveAllRunning then return end
- 
+
         GiveAllBtn.Text = "EATING..."
         local carrot = giveAllFindCarrot()
         local char = LP.Character
@@ -398,9 +368,9 @@ local function runGiveAll()
             task.wait(0.1)
             hum:UnequipTools()
         end
- 
+
         if not giveAllRunning then return end
- 
+
         GiveAllBtn.Text = "BURST..."
         GiveAllBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
         local burstConn
@@ -417,7 +387,7 @@ local function runGiveAll()
         end)
         task.wait(GIVE_ALL_BURST_TIME)
         if burstConn then burstConn:Disconnect() end
- 
+
         giveAllRunning = false
         if GiveAllBtn and GiveAllBtn.Parent then
             GiveAllBtn.Text = origText
@@ -425,7 +395,7 @@ local function runGiveAll()
         end
     end)
 end
- 
+
 ---------------------------------------------------------
 -- NULL DESYNC
 ---------------------------------------------------------
@@ -449,7 +419,7 @@ local function stopNullDesync()
     end 
     nullPartOffsets = {} 
 end
- 
+
 local function startNullDesync(char)
     if not NullDesyncActive then return end
     local root, hum = char and char:FindFirstChild("HumanoidRootPart"), char and char:FindFirstChildOfClass("Humanoid")
@@ -492,12 +462,12 @@ local function startNullDesync(char)
         currentRoot.CFrame = nullWeldOverride or NAN_POSITION
     end)
 end
- 
+
 ---------------------------------------------------------
 -- ROCKET SPAM & DESYNC
 ---------------------------------------------------------
 local ROCKET_MULTIPLIER = 3 -- How many times to fire PER launcher, PER frame. (Increase if you want it even faster!)
- 
+
 local function fireRocketAt(pos)
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
     local launchers = {}
@@ -533,7 +503,7 @@ local function fireRocketAt(pos)
         end
     end
 end
- 
+
 task.spawn(function()
     while true do
         for uid, a in pairs(RocketTargets) do
@@ -571,7 +541,7 @@ task.spawn(function()
         task.wait()
     end
 end)
- 
+
 local function stopDesync()
     if renderConn then renderConn:Disconnect(); renderConn = nil end
     if steppedConn then steppedConn:Disconnect(); steppedConn = nil end
@@ -583,7 +553,7 @@ local function stopDesync()
         for _, i in ipairs(root:GetChildren()) do if i:IsA("BodyGyro") or i:IsA("BodyPosition") then i:Destroy() end end
     end
 end
- 
+
 ---------------------------------------------------------
 -- KEYBINDS
 ---------------------------------------------------------
@@ -635,7 +605,7 @@ UIS.InputBegan:Connect(function(input, gp)
         end
     end
 end)
- 
+
 ---------------------------------------------------------
 -- KILL AURA
 ---------------------------------------------------------
@@ -676,7 +646,7 @@ RS.Heartbeat:Connect(function()
         end
     end
 end)
- 
+
 ---------------------------------------------------------
 -- UI LAYOUT
 ---------------------------------------------------------
@@ -691,7 +661,7 @@ makeBtn(MF, "TP To Void", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-390), Color3.f
         else r.CFrame = targetCF end
     end
 end)
- 
+
 createToggle(0, -360, "Fly", Color3.fromRGB(40,100,150), false, function()
     Flying = not Flying
     local char = LP.Character
@@ -717,9 +687,9 @@ createToggle(0, -360, "Fly", Color3.fromRGB(40,100,150), false, function()
     end
     return Flying
 end)
- 
+
 createToggle(0, -330, "Give Gear", Color3.fromRGB(120,80,40), false, function() GiveDroppedGearActive = not GiveDroppedGearActive; return GiveDroppedGearActive end)
- 
+
 createToggle(0, -300, "Perm Desync", Color3.fromRGB(40,100,150), false, function()
     env.desyncActive = not env.desyncActive
     local char = LP.Character
@@ -774,7 +744,7 @@ createToggle(0, -300, "Perm Desync", Color3.fromRGB(40,100,150), false, function
     end)
     return env.desyncActive
 end)
- 
+
 createToggle(0, -270, "Null Desync", Color3.fromRGB(200,50,50), true, function()
     NullDesyncActive = not NullDesyncActive
     if NullDesyncActive then
@@ -783,7 +753,7 @@ createToggle(0, -270, "Null Desync", Color3.fromRGB(200,50,50), true, function()
     else stopNullDesync() end
     return NullDesyncActive
 end)
- 
+
 createToggle(0, -240, "Ghost Touch", Color3.fromRGB(150,80,20), false, function() 
     GhostTouchActive = not GhostTouchActive
     local target, root = LatestClone or workspace:FindFirstChild(LP.Name .. "'s Clone"), LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -807,7 +777,7 @@ createToggle(0, -240, "Ghost Touch", Color3.fromRGB(150,80,20), false, function(
     else if ghostConn then ghostConn:Disconnect(); ghostConn = nil end end
     return GhostTouchActive 
 end)
- 
+
 createToggle(0, -210, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
     IsStackingActive = not IsStackingActive
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
@@ -817,11 +787,11 @@ createToggle(0, -210, "Inf Stack", Color3.fromRGB(100,40,100), false, function()
     end
     return IsStackingActive
 end)
- 
+
 GiveAllBtn = makeBtn(MF, "Give All", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-180), Color3.fromRGB(50,50,50))
 GiveAllBtn.TextSize = 11
 GiveAllBtn.MouseButton1Click:Connect(runGiveAll)
- 
+
 local GodBtn = makeBtn(MF, "God Mode", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-150), Color3.fromRGB(50,50,50)); GodBtn.TextSize = 11
 local function activateGodMode()
     if isGodMode then return end
@@ -857,28 +827,18 @@ local function activateGodMode()
     end)
 end
 GodBtn.MouseButton1Click:Connect(activateGodMode)
- 
+
 local PeriBtn = makeBtn(MF, "Peri Laser", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-120), Color3.fromRGB(50,50,50)); PeriBtn.TextSize = 11
 PeriBtn.MouseButton1Click:Connect(function()
-    local char = LP.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local bp = LP:FindFirstChild("Backpack")
-    -- find an unused RainbowPeriastron (character first, then backpack)
-    local peri
-    if char then for _, t in ipairs(char:GetChildren()) do if t.Name == "RainbowPeriastron" and not usedPeris[t] then peri = t; break end end end
-    if not peri and bp then for _, t in ipairs(bp:GetChildren()) do if t.Name == "RainbowPeriastron" and not usedPeris[t] then peri = t; break end end end
-    if not char or not hum or not peri then return end
-    hum:EquipTool(peri)
-    task.wait(0.1)
-    local pth = workspace:FindFirstChild(LP.Name)
+    local pth = workspace:FindFirstChild(LP.Name) 
     if pth and pth:FindFirstChild("RainbowPeriastron") and pth.RainbowPeriastron:FindFirstChild("Server") and pth.RainbowPeriastron.Server:FindFirstChild("RainBeam") then
         local ls = pth.RainbowPeriastron.Server.RainBeam:FindFirstChild("LoopSound")
         if ls then ls:Destroy() end
     end
-    if peri:FindFirstChild("Remote") then peri.Remote:FireServer(Enum.KeyCode.Q) end
-    usedPeris[peri] = true
+    local tool = (LP.Character and LP.Character:FindFirstChild("RainbowPeriastron")) or (LP:FindFirstChild("Backpack") and LP.Backpack:FindFirstChild("RainbowPeriastron"))
+    if tool and tool:FindFirstChild("Remote") then tool.Remote:FireServer(Enum.KeyCode.Q) end
 end)
- 
+
 local HatDropBtn = makeBtn(MF, "Hat Drop", UDim2.new(0.5,0,0,30), UDim2.new(0,0,1,-90), Color3.fromRGB(50,50,50)); HatDropBtn.TextSize = 11
 HatDropBtn.MouseButton1Click:Connect(function()
     local char = LP.Character
@@ -901,7 +861,7 @@ HatDropBtn.MouseButton1Click:Connect(function()
         task.delay(1, function() if HatDropBtn and HatDropBtn.Parent then HatDropBtn.Text, HatDropBtn.BackgroundColor3 = oldTxt, oldCol end end)
     end
 end)
- 
+
 local function getHighlightedPlayers()
     local set = {}
     for uid, a in pairs(RocketTargets) do if a then local p = P:GetPlayerByUserId(uid); if p then set[p] = true end end end
@@ -915,7 +875,7 @@ local function getHighlightedPlayers()
     for p, _ in pairs(set) do table.insert(list, p) end
     return list
 end
- 
+
 local function applyFireInterestToPlayer(t)
     if FireInterestTargets[t] then return end
     FireInterestTargets[t] = true
@@ -930,7 +890,7 @@ local function applyFireInterestToPlayer(t)
         pcall(function() firetouchinterest(handle, tp, 0); task.wait(); firetouchinterest(handle, tp, 1) end)
     end)
 end
- 
+
 createToggle(0, -60, "Kill Aura", Color3.fromRGB(255,50,50), false, function()
     KillAuraActive = not KillAuraActive
     if not KillAuraActive then
@@ -966,12 +926,12 @@ createToggle(0, 0, "S-Kill", Color3.fromRGB(40,110,150), false, function()
     refreshPlayerColors()
     return SKillActive 
 end)
- 
+
 local THB = makeBtn(MF, "TP Home", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-390), Color3.fromRGB(40,70,40))
 THB.MouseButton1Click:Connect(function()
     local r = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     if r then
-        local thc = homeCFrame and (homeCFrame * CFrame.Angles(0, math.rad(-90), 0))  -- face 90 deg right
+        local thc = homeCFrame
         if thc then 
             if env.desyncActive then env.fakeCF, env.realCF = thc, thc
             elseif NullDesyncActive then nullSavedCF = thc
@@ -983,10 +943,10 @@ THB.MouseButton1Click:Connect(function()
         end
     end
 end)
- 
+
 createToggle(0.5, -360, "Noclip", Color3.fromRGB(120,40,120), false, function() NoclipActive = not NoclipActive; return NoclipActive end)
 createToggle(0.5, -330, "Spawn Clone", Color3.fromRGB(40,120,40), false, function() SpawnCloneActive = not SpawnCloneActive; if not SpawnCloneActive then table.clear(SpawnCloneTargets) end; refreshPlayerColors(); return SpawnCloneActive end)
- 
+
 local TPCloneBtn = makeBtn(MF, "TP Clone", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-300), Color3.fromRGB(50,50,50)); TPCloneBtn.TextSize = 11
 TPCloneBtn.MouseButton1Click:Connect(function()
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
@@ -1010,7 +970,7 @@ TPCloneBtn.MouseButton1Click:Connect(function()
         end
     end
 end)
- 
+
 createToggle(0.5, -270, "Anti-Pickup", Color3.fromRGB(40,120,40), false, function()
     AntiPickupActive = not AntiPickupActive
     if AntiPickupActive then
@@ -1036,7 +996,7 @@ createToggle(0.5, -270, "Anti-Pickup", Color3.fromRGB(40,120,40), false, functio
     end
     return AntiPickupActive
 end)
- 
+
 createToggle(0.5, -240, "Anti-Void", Color3.fromRGB(40,120,120), true, function() AntiVoidActive = not AntiVoidActive; workspace.FallenPartsDestroyHeight = AntiVoidActive and -9e9 or (NullDesyncActive and -9e9 or -500); return AntiVoidActive end)
 createToggle(0.5, -210, "Steal Arm", Color3.fromRGB(140,90,20), false, function() 
     StealArmActive = not StealArmActive
@@ -1052,7 +1012,7 @@ createToggle(0.5, -210, "Steal Arm", Color3.fromRGB(140,90,20), false, function(
     refreshPlayerColors()
     return StealArmActive 
 end)
- 
+
 local AASB = makeBtn(MF, "Anti-Arm Steal", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-180), Color3.fromRGB(50,50,50)); AASB.TextSize = 11
 local function activateAntiArm()
     if isAntiStealing then return end
@@ -1079,80 +1039,10 @@ local function activateAntiArm()
     end)
 end
 AASB.MouseButton1Click:Connect(activateAntiArm)
- 
-createToggle(0.5, -150, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function()
-    IsAntiLaser = not IsAntiLaser
-    return IsAntiLaser
-end)
 
-local SupernovaBtn = makeBtn(
-    MF,
-    "Supernova",
-    UDim2.new(0.5,0,0,30),
-    UDim2.new(0.5,0,1,-120),
-    Color3.fromRGB(50,50,50)
-)
+createToggle(0.5, -150, "ANTI-LASER", Color3.fromRGB(40,90,40), false, function() IsAntiLaser = not IsAntiLaser; return IsAntiLaser end)
+createToggle(0.5, -120, "Supernova", Color3.fromRGB(150,80,40), false, function() InfSupernovaActive = not InfSupernovaActive; return InfSupernovaActive end)
 
-SupernovaBtn.TextSize = 11
-
-SupernovaBtn.MouseButton1Click:Connect(function()
-    if InfSupernovaActive then return end
-
-    local char = LP.Character
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    local bp = LP:FindFirstChild("Backpack")
-
-    -- find an unused IvoryPeriastron character first, then backpack
-    local ivory
-
-    if char then
-        for _, t in ipairs(char:GetChildren()) do
-            if t.Name == "IvoryPeriastron" and not usedIvories[t] then
-                ivory = t
-                break
-            end
-        end
-    end
-
-    if not ivory and bp then
-        for _, t in ipairs(bp:GetChildren()) do
-            if t.Name == "IvoryPeriastron" and not usedIvories[t] then
-                ivory = t
-                break
-            end
-        end
-    end
-
-    if not char or not hum or not ivory then
-        local old = SupernovaBtn.Text
-        SupernovaBtn.Text = "NO UNUSED IVORY"
-
-        task.delay(1, function()
-            if SupernovaBtn and SupernovaBtn.Parent then
-                SupernovaBtn.Text = old
-            end
-        end)
-
-        return
-    end
-
-    -- start the 2 second background loop immediately
-    InfSupernovaActive = true
-
-    task.delay(2, function()
-        InfSupernovaActive = false
-    end)
-
-    -- the rest of the logic now runs DURING the 2 second loop
-    hum:EquipTool(ivory)
-    task.wait(0.1)
-
-    if ivory and ivory.Parent and ivory:FindFirstChild("Remote") then
-        ivory.Remote:FireServer(Enum.KeyCode.Q)
-        usedIvories[ivory] = true
-    end
-end)
- 
 local DelGearBtn = makeBtn(MF, "Delete Gear", UDim2.new(0.5,0,0,30), UDim2.new(0.5,0,1,-90), Color3.fromRGB(50,50,50)); DelGearBtn.TextSize = 11
 DelGearBtn.MouseButton1Click:Connect(function()
     local char = LP.Character
@@ -1170,7 +1060,7 @@ DelGearBtn.MouseButton1Click:Connect(function()
         task.delay(1, function() if DelGearBtn and DelGearBtn.Parent then DelGearBtn.Text, DelGearBtn.BackgroundColor3 = oldTxt, oldCol end end)
     end
 end)
- 
+
 createToggle(0.5, -60, "Fire Interest", Color3.fromRGB(200,50,200), false, function()
     FireInterestActive = not FireInterestActive
     if not FireInterestActive then
@@ -1183,7 +1073,7 @@ createToggle(0.5, -60, "Fire Interest", Color3.fromRGB(200,50,200), false, funct
     return FireInterestActive
 end)
 createToggle(0.5, -30, "Void-Kill", Color3.fromRGB(40,150,160), false, function() VoidKillActive = not VoidKillActive; if not VoidKillActive then clearToolTargets(VoidKillTargets, VoidKillLoops, VoidKillTrackers, ActiveVoidKillSwords) end; refreshPlayerColors(); return VoidKillActive end)
- 
+
 createToggle(0.5, 0, "Weld-Kill", Color3.fromRGB(180,100,40), false, function() 
     WeldKillActive = not WeldKillActive
     if not WeldKillActive then 
@@ -1199,7 +1089,7 @@ createToggle(0.5, 0, "Weld-Kill", Color3.fromRGB(180,100,40), false, function()
     refreshPlayerColors()
     return WeldKillActive 
 end)
- 
+
 ---------------------------------------------------------
 -- PLAYER CLICK LOGIC
 ---------------------------------------------------------
@@ -1366,7 +1256,7 @@ local function E(t, btn)
     if GiveDroppedGearActive then btn.BackgroundColor3 = Color3.fromRGB(40,120,40); consistentWeldTPGive(t); task.wait(1.5); refreshPlayerColors(); return end
     executeSpectralNuke(t, btn)
 end
- 
+
 local function R()
     for _, i in pairs(SF:GetChildren()) do if i:IsA("TextButton") then i:Destroy() end end
     for _, p in pairs(P:GetPlayers()) do 
@@ -1380,7 +1270,7 @@ local function R()
 end
 R()
 P.PlayerAdded:Connect(R); P.PlayerRemoving:Connect(R)
- 
+
 ---------------------------------------------------------
 -- BACKGROUND TASKS
 ---------------------------------------------------------
@@ -1391,7 +1281,7 @@ CB.MouseButton1Click:Connect(function()
     if antiPickupCharConn then antiPickupCharConn:Disconnect(); antiPickupCharConn = nil end
     if antiPickupBpConn then antiPickupBpConn:Disconnect(); antiPickupBpConn = nil end
     if BoneSwordTouchLoop then BoneSwordTouchLoop:Disconnect(); BoneSwordTouchLoop = nil end
-    if homeTPLoop then pcall(function() task.cancel(homeTPLoop) end); homeTPLoop = nil end
+    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
     AntiPickupActive, isGodMode, VoidKillActive, SpawnCloneActive, FireInterestActive, KillAuraActive = false, false, false, false, false, false
     giveAllRunning = false
     clearToolTargets(SKillTargets, SKillLoops, SKillTrackers, ActiveSKillSwords)
@@ -1405,7 +1295,7 @@ CB.MouseButton1Click:Connect(function()
     restoreTools()
     SG:Destroy() 
 end)
- 
+
 workspace.ChildAdded:Connect(function(c)
     if IsAntiLaser then
         RS.Heartbeat:Wait()
@@ -1416,7 +1306,7 @@ workspace.ChildAdded:Connect(function(c)
     end
     if c.Name == LP.Name .. "'s Clone" then LatestClone = c end
 end)
- 
+
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -1428,7 +1318,7 @@ task.spawn(function()
         end
     end
 end)
- 
+
 RS.Heartbeat:Connect(function()
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
     if IsStackingActive and char and bp then
@@ -1436,9 +1326,9 @@ RS.Heartbeat:Connect(function()
         if t then for _, i in ipairs(bp:GetChildren()) do if i.Name == t.Name then i.Parent = char end end end
     end
 end)
- 
+
 RS.Stepped:Connect(function() if NoclipActive and LP.Character then for _, p in ipairs(LP.Character:GetDescendants()) do if p:IsA("BasePart") then p.CanCollide = false end end end end)
- 
+
 ---------------------------------------------------------
 -- HOME TP LOOP (loops to home for 1s after respawn when NOT in null desync)
 ---------------------------------------------------------
@@ -1446,31 +1336,22 @@ local function handleHomeTP(char)
     local hum = char:WaitForChild("Humanoid", 5)
     local root = char:WaitForChild("HumanoidRootPart", 5)
     if not hum or not root then return end
-    if homeTPLoop then pcall(function() task.cancel(homeTPLoop) end); homeTPLoop = nil end
+    if homeTPLoop then homeTPLoop:Disconnect(); homeTPLoop = nil end
+    -- Keep resolving the home coords (TP Home button uses this), but no longer
+    -- auto-teleport on respawn (removed: it was lagging things out).
     local hardCoord = getHomeFromSpawnValue()
     if hardCoord then homeCFrame = hardCoord end
-    if not NullDesyncActive then
-        -- Less aggressive: a few spaced TPs instead of every-frame. Rotate 90 deg right.
-        homeTPLoop = task.spawn(function()
-            for i = 1, 6 do
-                if NullDesyncActive then break end
-                if root and root.Parent then root.CFrame = homeCFrame * CFrame.Angles(0, math.rad(-90), 0) end
-                task.wait(0.15)
-            end
-            homeTPLoop = nil
-        end)
-    end
 end
- 
+
 LP.CharacterAdded:Connect(function(c)
     if NullDesyncActive then task.wait(0.5); startNullDesync(c) end
     task.spawn(function() handleHomeTP(c) end)
 end)
- 
+
 if LP.Character then
     task.spawn(function() handleHomeTP(LP.Character) end)
 end
- 
+
 task.spawn(function()
     workspace.FallenPartsDestroyHeight = -9e9
     local root = (LP.Character or LP.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart", 5)
@@ -1497,17 +1378,7 @@ task.spawn(function()
     task.wait(3)
     local FAR = CFrame.new(99999,99999,99999)
     for _, v in ipairs(workspace:GetDescendants()) do if v.Name == "SpawnWalls" and v:IsA("BasePart") then v.CFrame, v.Anchored, v.CanCollide = FAR, true, false end end
-end)
- 
--- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
-task.spawn(function()
-    task.wait(1.5)
-    runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for first to finish
-    task.wait(2)
-    runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for second to finish
-    task.wait(2)
+    task.wait(4)
     do
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1520,4 +1391,9 @@ task.spawn(function()
         end
     end
     activateAntiArm()
+end)
+
+task.spawn(function()
+    task.wait(1.5)
+    runGiveAll()
 end)
