@@ -496,7 +496,7 @@ end
 ---------------------------------------------------------
 -- ROCKET SPAM & DESYNC
 ---------------------------------------------------------
-local ROCKET_MULTIPLIER = 3 -- How many times to fire PER launcher, PER frame. (Increase if you want it even faster!)
+local ROCKET_MULTIPLIER = 1 -- How many times to fire PER launcher, PER frame. (Increase if you want it even faster!)
  
 local function fireRocketAt(pos)
     local char, bp = LP.Character, LP:FindFirstChild("Backpack")
