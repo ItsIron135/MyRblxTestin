@@ -37,7 +37,7 @@ local allowedTools, hiddenToolsCache = {}, Instance.new("Folder")
 hiddenToolsCache.Name = "AntiPickupCache"
 local UsedSwords, LatestClone = {}, nil
 local usedPeris, usedIvories = {}, {}  -- track used RainbowPeriastron / IvoryPeriastron copies
-local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=1,["Mini-StarShard"]=1,CrimsonPillar=1,Pulse=1}
+local laserNames = {Rain=1,Beam=1,RainBeam=1,Effect=1,Center=1,Part=1,StarShard=1,["Mini-StarShard"]=1,CrimsonPillar=1,Pulse=1,PeriRangers=1,DecimateScript=1}
 local homeCFrame = CFrame.new(0, 10, 0)
 local homeTPLoop = nil
 local SPAWN_COORDS = {
