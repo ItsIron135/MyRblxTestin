@@ -1491,15 +1491,8 @@ task.spawn(function()
 end)
  
 -- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
-task.spawn(function()
-    task.wait(1.5)
-    runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for first to finish
-    task.wait(2)
-    runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for second to finish
-    task.wait(2)
-    do
+    task.wait(3)
+
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
 
