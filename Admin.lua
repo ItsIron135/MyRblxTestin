@@ -1490,7 +1490,7 @@ task.spawn(function()
     for _, v in ipairs(workspace:GetDescendants()) do if v.Name == "SpawnWalls" and v:IsA("BasePart") then v.CFrame, v.Anchored, v.CanCollide = FAR, true, false end end
 end)
  
--- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
+-- Startup sequence: 
 task.spawn(function()
     task.wait(1.5)
     runGiveAll()
