@@ -1491,29 +1491,22 @@ task.spawn(function()
 end)
  
 -- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
-    task.wait(3)
-
+task.spawn(function()
+    task.wait(1.5)
+    runGiveAll()
+    repeat task.wait(0.1) until not giveAllRunning   -- wait for first to finish
+    task.wait(2)
+    runGiveAll()
+    repeat task.wait(0.1) until not giveAllRunning   -- wait for second to finish
+    task.wait(2)
+    do
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-
-        local function grab(name)
-            return (bp and bp:FindFirstChild(name)) or (char and char:FindFirstChild(name))
-        end
-
-        local bow   = grab("OrnateGoldenBow")
-        local ivory = grab("IvoryPeriastron")
-
-        if hum then
-            if bow then
-                hum:EquipTool(bow)
-                task.wait(0.2)
-            end
-            if ivory then
-                hum:EquipTool(ivory)
-                task.wait(0.2)
-            end
+        local bow = (bp and bp:FindFirstChild("OrnateGoldenBow")) or (char and char:FindFirstChild("OrnateGoldenBow"))
+        if bow and hum then
+            hum:EquipTool(bow)
+            task.wait(0.2)
             hum:UnequipTools()
             task.wait(0.2)
         end
-    end
 end)
