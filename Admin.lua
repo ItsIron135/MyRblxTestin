@@ -15,7 +15,8 @@ if PG:FindFirstChild("StealerUI") then PG.StealerUI:Destroy() end
 ---------------------------------------------------------	
 local env = getgenv()
 env.desyncActive, env.fakeCF, env.realCF = env.desyncActive or false, env.fakeCF or CFrame.new(), env.realCF or CFrame.new()
- 
+
+local VIM = game:GetService("VirtualInputManager")
 local BoneSwordTouchLoop, renderConn, steppedConn, heartbeatConn, ghostConn, nullDesyncLoop = nil
 local Flying, FlySpeed = false, 100
 local NoclipActive, GhostTouchActive, GiveDroppedGearActive, IsStackingActive, isGodMode, InfSupernovaActive, isAntiStealing = false, false, false, false, false, false, false
@@ -61,8 +62,8 @@ end
  
 local giveAllRunning = false
 local GIVE_ALL_NORMAL_DELAY = 0.02
-local GIVE_ALL_BURST_TIME = 0.05
-local GIVE_ALL_BURST_AMOUNT = 60
+local GIVE_ALL_BURST_TIME = 0.02
+local GIVE_ALL_BURST_AMOUNT = 100
 local GIVE_ALL_REMOTES = {"SpawnRainbowBlock","SpawnDiamondBlock","SpawnSuperBlock","SpawnLuckyBlock","SpawnGalaxyBlock"}
  
 ---------------------------------------------------------
@@ -1490,23 +1491,37 @@ task.spawn(function()
     for _, v in ipairs(workspace:GetDescendants()) do if v.Name == "SpawnWalls" and v:IsA("BasePart") then v.CFrame, v.Anchored, v.CanCollide = FAR, true, false end end
 end)
  
--- Startup sequence: 
+-- Startup sequence: Give All, wait 2s, Give All again, THEN bow equip + anti-arm steal
 task.spawn(function()
     task.wait(1.5)
     runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for first to finish
-    task.wait(2)
-    runGiveAll()
-    repeat task.wait(0.1) until not giveAllRunning   -- wait for second to finish
-    task.wait(2)
+    task.wait(6)
     do
         local char, bp = LP.Character, LP:FindFirstChild("Backpack")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        local bow = (bp and bp:FindFirstChild("OrnateGoldenBow")) or (char and char:FindFirstChild("OrnateGoldenBow"))
-        if bow and hum then
-            hum:EquipTool(bow)
-            task.wait(0.2)
+        local function grab(name)
+            return (bp and bp:FindFirstChild(name)) or (char and char:FindFirstChild(name))
+        end
+        local bow   = grab("OrnateGoldenBow")
+        local ivory = grab("IvoryPeriastron")
+        if hum then
+            if bow then
+                hum:EquipTool(bow)
+                VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+				task.wait(0.12)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+				task.wait(0.12)
+			    VIM:SendKeyEvent(true, Enum.KeyCode.Q, false, game)
+				task.wait(0.12)
+                VIM:SendKeyEvent(false, Enum.KeyCode.Q, false, game)
+                task.wait(0.4)
+            end
+            if ivory then
+                hum:EquipTool(ivory)
+                task.wait(0.2)
+            end
             hum:UnequipTools()
             task.wait(0.2)
         end
+    end
 end)
