@@ -1,0 +1,77 @@
+local Lighting = game:GetService("Lighting")
+
+pcall(function()
+	Lighting.Technology = Enum.Technology.Future
+end)
+pcall(function()
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level21
+end)
+pcall(function()
+	UserSettings():GetService("UserGameSettings").SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel10
+end)
+
+for _, v in ipairs(Lighting:GetChildren()) do
+	if v:IsA("BloomEffect")
+		or v:IsA("ColorCorrectionEffect")
+		or v:IsA("DepthOfFieldEffect")
+		or v:IsA("SunRaysEffect")
+		or v:IsA("BlurEffect")
+		or v:IsA("Atmosphere")
+		or v:IsA("Sky") then
+		v:Destroy()
+	end
+end
+
+-- sunset base
+Lighting.ClockTime = 17.85
+Lighting.Brightness = 2.2
+Lighting.Ambient = Color3.fromRGB(130, 95, 75)
+Lighting.OutdoorAmbient = Color3.fromRGB(150, 105, 65)
+Lighting.ColorShift_Top = Color3.fromRGB(255, 155, 90)
+Lighting.ColorShift_Bottom = Color3.fromRGB(70, 45, 35)
+Lighting.GlobalShadows = true
+Lighting.EnvironmentDiffuseScale = 0.55
+Lighting.EnvironmentSpecularScale = 0.7
+Lighting.ShadowSoftness = 0.35
+Lighting.ExposureCompensation = -0.25
+
+-- sky swap
+local sky = Instance.new("Sky")
+sky.SkyboxBk = "rbxassetid://92464172"
+sky.SkyboxDn = "rbxassetid://92464250"
+sky.SkyboxFt = "rbxassetid://92464217"
+sky.SkyboxLf = "rbxassetid://92464234"
+sky.SkyboxRt = "rbxassetid://92464189"
+sky.SkyboxUp = "rbxassetid://92464157"
+sky.CelestialBodiesShown = true
+sky.StarCount = 0
+sky.SunAngularSize = 18
+sky.MoonAngularSize = 0
+sky.Parent = Lighting
+
+local atm = Instance.new("Atmosphere")
+atm.Density = 0.1
+atm.Offset = 0.12
+atm.Color = Color3.fromRGB(255, 175, 120)
+atm.Decay = Color3.fromRGB(100, 55, 40)
+atm.Glare = 0.18
+atm.Haze = 1.5
+atm.Parent = Lighting
+
+local rays = Instance.new("SunRaysEffect")
+rays.Intensity = 0.08
+rays.Spread = 0.55
+rays.Parent = Lighting
+
+local bloom = Instance.new("BloomEffect")
+bloom.Intensity = 0.22
+bloom.Size = 20
+bloom.Threshold = 1.15
+bloom.Parent = Lighting
+
+local cc = Instance.new("ColorCorrectionEffect")
+cc.Brightness = 0.03
+cc.Contrast = 0.14
+cc.Saturation = 0.1
+cc.TintColor = Color3.fromRGB(255, 215, 180)
+cc.Parent = Lighting
